@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Endpoints - AI Gateway Admin{% endblock %}
+{% block content %}
+<h1>Endpoints</h1>
+<table>
+  <tr><th>Endpoint</th><th>Live candidates</th><th></th></tr>
+  {% for e in endpoints %}
+  <tr>
+    <td>
+      {{ e.name }}
+      {% if e.comment %}<span class="comment-icon" title="{{ e.comment }}">&#128172;</span>{% endif %}
+    </td>
+    <td>{{ e.candidate_count }}</td>
+    <td>
+      <a href="/admin/endpoints/{{ e.name }}/edit">Edit</a>
+      &nbsp;
+      <form class="inline" method="post" action="/admin/endpoints/{{ e.name }}/delete" onsubmit="return confirm('Delete endpoint {{ e.name }}?');">
+        <button type="submit" class="btn-danger">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="3">No endpoints configured yet.</td></tr>
+  {% endfor %}
+</table>
+<p><a class="btn" href="/admin/endpoints/new">+ Add endpoint</a></p>
+{% endblock %}

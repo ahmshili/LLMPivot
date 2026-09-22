@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if editing else 'Add' }} endpoint - AI Gateway Admin{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if editing else 'Add' }} endpoint</h1>
+
+{% if errors %}
+<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if not provider_names %}
+<p class="hint">No providers configured yet -- <a href="/admin/providers/new">add one first</a>.</p>
+{% endif %}
+
+<div id="provider-datalists"></div>
+
+<form method="post" action="{{ '/admin/endpoints/' + endpoint_name if editing else '/admin/endpoints' }}" id="endpoint-form">
+  <label for="endpoint_name">Endpoint name</label>
+  <input id="endpoint_name" name="endpoint_name" type="text" value="{{ endpoint_name or '' }}" {% if editing %}readonly{% endif %} required>
+  {% if editing %}<p class="hint">Renaming isn't supported here -- delete and recreate if you need a different name.</p>{% endif %}
+
+  <label for="comment">Comment</label>
+  <textarea id="comment" name="comment" style="min-height:3rem;">{{ comment }}</textarea>
+
+  <h2>Providers for this endpoint</h2>
+  <p class="hint">Entries are tried top to bottom. The same provider can appear more than once -- e.g. Gemini, then Groq, then Gemini again with different models.</p>
+  <p class="hint">Drag the &#10531; handle to reorder, or check multiple entries to move them together.</p>
+  <div id="provider-entries"></div>
+  <button type="button" id="add-provider-row">+ Add provider</button>
+
+  <div class="actions">
+    <button type="submit">{{ 'Save endpoint' if editing else 'Create endpoint' }}</button>
+    <a class="btn" href="/admin/endpoints">Cancel</a>
+  </div>
+</form>
+
+<template id="row-template">
+  <fieldset class="provider-row">
+    <div class="actions" style="margin-top:0;">
+      <button type="button" class="icon-btn" data-action="move-top" title="Move to top"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="4" x2="20" y2="4"></line><polyline points="8 14 12 10 16 14"></polyline><line x1="12" y1="10" x2="12" y2="20"></line></svg></button>
+      <button type="button" class="icon-btn" data-action="move-up" title="Move up"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+      <button type="button" class="icon-btn" data-action="move-down" title="Move down"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+      <button type="button" class="icon-btn" data-action="move-bottom" title="Move to bottom"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"></line><polyline points="16 10 12 14 8 10"></polyline><line x1="12" y1="14" x2="12" y2="4"></line></svg></button>
+    </div>
+
+    <label>Provider <span class="dup-label hint"></span></label>
+    <select data-field="provider" required>
+      <option value="">-- choose --</option>
+      {% for p in provider_names %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+    </select>
+
+    <label><input type="checkbox" data-field="use_defaults" checked> Use this provider's default priority models</label>
+    <div class="models-editor-wrap" style="display:none;">
+      <button type="button" class="btn" data-action="append-defaults">+ Add provider's default models to list</button>
+      <div class="models-editor"></div>
+    </div>
+
+    <label><input type="checkbox" data-field="include_remaining_models"> Also include every other live model for this provider, as low-priority fallback (dynamic -- always current, not a fixed snapshot)</label>
+
+    <label><input type="checkbox" data-field="use_all_accounts" checked> Use all of this provider's accounts</label>
+    <div class="accounts-box" style="display:none;"></div>
+
+    <div class="actions"><button type="button" data-action="remove">Remove this provider</button></div>
+  </fieldset>
+</template>
+
+<script>
+const PROVIDER_DATA = {{ provider_data_json|safe }};
+let rowIndex = 0;
+
+function renumberDuplicateLabels() {
+  const rows = Array.from(document.querySelectorAll('#provider-entries .provider-row'));
+  const counts = {};
+  rows.forEach(function (root) {
+    const select = root.querySelector('[data-field=provider]');
+    const name = select.value;
+    if (!name) { root.querySelector('.dup-label').textContent = ''; return; }
+    counts[name] = (counts[name] || 0) + 1;
+    const label = root.querySelector('.dup-label');
+    label.textContent = counts[name] > 1 ? '(#' + counts[name] + ' using this provider)' : '';
+  });
+}
+
+function addProviderRow(prefill) {
+  const index = rowIndex++;
+  const tpl = document.getElementById('row-template').content.cloneNode(true);
+  const root = tpl.querySelector('.provider-row');
+  root._modelEditor = null;
+
+  const select = root.querySelector('[data-field=provider]');
+  select.name = 'provider_' + index;
+  const useDefaults = root.querySelector('[data-field=use_defaults]');
+  useDefaults.name = 'use_defaults_' + index;
+  const includeRemaining = root.querySelector('[data-field=include_remaining_models]');
+  includeRemaining.name = 'include_remaining_models_' + index;
+  const useAllAccounts = root.querySelector('[data-field=use_all_accounts]');
+  useAllAccounts.name = 'use_all_accounts_' + index;
+
+  const modelsEditorWrap = root.querySelector('.models-editor-wrap');
+  const modelsEditorBox = root.querySelector('.models-editor');
+  const accountsBox = root.querySelector('.accounts-box');
+
+  const hiddenModelsInput = document.createElement('input');
+  hiddenModelsInput.type = 'hidden';
+  hiddenModelsInput.name = 'models_json_' + index;
+  root.appendChild(hiddenModelsInput);
+  root._hiddenModelsInput = hiddenModelsInput;
+
+  function refreshVisibility() {
+    modelsEditorWrap.style.display = useDefaults.checked ? 'none' : 'block';
+    accountsBox.style.display = useAllAccounts.checked ? 'none' : 'block';
+  }
+
+  function ensureModelEditor(seedList) {
+    if (!root._modelEditor) {
+      const data = PROVIDER_DATA[select.value] || {models: [], accounts: []};
+      root._modelEditor = createModelListEditor(modelsEditorBox, seedList || [], 'datalist-' + select.value, {
+        providerName: select.value,
+        accounts: data.accounts,
+      });
+    }
+    return root._modelEditor;
+  }
+
+  useDefaults.addEventListener('change', function () {
+    if (!useDefaults.checked) {
+      // Start blank -- the person can add the provider's default models
+      // back in explicitly via the "+ Add provider's default models"
+      // button below, rather than having them silently pre-filled.
+      ensureModelEditor([]);
+    }
+    refreshVisibility();
+  });
+  useAllAccounts.addEventListener('change', refreshVisibility);
+
+  root.querySelector('[data-action=append-defaults]').addEventListener('click', function () {
+    const data = PROVIDER_DATA[select.value] || {models: [], accounts: []};
+    const editor = ensureModelEditor([]);
+    const current = editor.getList();
+    const toAdd = data.priority_models.filter(function (m) { return current.indexOf(m) === -1; });
+    editor.setList(current.concat(toAdd));
+  });
+
+  select.addEventListener('change', function () {
+    const data = PROVIDER_DATA[select.value] || {models: [], accounts: []};
+    renderPicker(accountsBox, data.accounts.map(function (a) {
+      return {name: 'accounts_' + index, value: a.key, label: a.username, checked: false};
+    }));
+    root._modelEditor = null;
+    modelsEditorBox.innerHTML = '';
+    if (!useDefaults.checked) {
+      ensureModelEditor([]);
+    }
+    renumberDuplicateLabels();
+  });
+
+  root.querySelector('[data-action=remove]').addEventListener('click', function () {
+    root.remove();
+    renumberDuplicateLabels();
+    entriesReorderable.refresh();
+  });
+  root.querySelector('[data-action=move-up]').addEventListener('click', function () {
+    if (root.previousElementSibling) root.parentNode.insertBefore(root, root.previousElementSibling);
+    renumberDuplicateLabels();
+  });
+  root.querySelector('[data-action=move-down]').addEventListener('click', function () {
+    if (root.nextElementSibling) root.parentNode.insertBefore(root.nextElementSibling, root);
+    renumberDuplicateLabels();
+  });
+  root.querySelector('[data-action=move-top]').addEventListener('click', function () {
+    root.parentNode.insertBefore(root, root.parentNode.firstElementChild);
+    renumberDuplicateLabels();
+  });
+  root.querySelector('[data-action=move-bottom]').addEventListener('click', function () {
+    root.parentNode.appendChild(root);
+    renumberDuplicateLabels();
+  });
+
+  document.getElementById('provider-entries').appendChild(root);
+
+  if (prefill) {
+    select.value = prefill.provider;
+    useDefaults.checked = (prefill.models === null);
+    includeRemaining.checked = !!prefill.include_remaining_models;
+    useAllAccounts.checked = (prefill.accounts === null);
+    const data = PROVIDER_DATA[prefill.provider] || {models: [], accounts: []};
+    renderPicker(accountsBox, data.accounts.map(function (a) {
+      return {name: 'accounts_' + index, value: a.key, label: a.username, checked: prefill.accounts && prefill.accounts.includes(a.key)};
+    }));
+    if (!useDefaults.checked) {
+      ensureModelEditor(prefill.models || data.priority_models);
+    }
+  }
+  refreshVisibility();
+  renumberDuplicateLabels();
+  entriesReorderable.refresh();
+}
+
+const entriesReorderable = makeReorderable(
+  document.getElementById('provider-entries'),
+  function () { return Array.from(document.querySelectorAll('#provider-entries .provider-row')); },
+  function () { renumberDuplicateLabels(); },
+  {
+    bulk: true,
+    onRemove: function (selectedRows) {
+      selectedRows.forEach(function (r) { r.remove(); });
+      renumberDuplicateLabels();
+      entriesReorderable.refresh();
+    },
+  }
+);
+
+document.getElementById('add-provider-row').addEventListener('click', function () { addProviderRow(null); });
+
+document.getElementById('endpoint-form').addEventListener('submit', function () {
+  document.querySelectorAll('#provider-entries .provider-row').forEach(function (root) {
+    const list = root._modelEditor ? root._modelEditor.getList() : [];
+    root._hiddenModelsInput.value = JSON.stringify(list);
+  });
+});
+
+// One datalist per provider (not a single shared cross-provider list) --
+// selecting groq must never suggest gemini's or mistral's models.
+const datalistContainer = document.getElementById('provider-datalists');
+Object.keys(PROVIDER_DATA).forEach(function (providerName) {
+  const dl = document.createElement('datalist');
+  dl.id = 'datalist-' + providerName;
+  PROVIDER_DATA[providerName].models.forEach(function (m) {
+    const opt = document.createElement('option');
+    opt.value = m;
+    dl.appendChild(opt);
+  });
+  datalistContainer.appendChild(dl);
+});
+
+const existingEntries = {{ existing_entries_json|safe }};
+if (existingEntries.length) {
+  existingEntries.forEach(function (entry) { addProviderRow(entry); });
+} else {
+  addProviderRow(null);
+}
+</script>
+{% endblock %}

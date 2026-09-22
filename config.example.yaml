@@ -1,0 +1,165 @@
+# yaml-language-server: $schema=./config.schema.json
+#
+# Example AI Gateway configuration.
+#
+# Copy this file to config.yaml and adjust it for your setup. Secrets are
+# never stored here -- each account's API key is read from an environment
+# variable at request time (see .env.example).
+
+litellm:
+  base_url: "http://localhost:4000"
+  timeout_seconds: 30
+  # Set this to authenticate the gateway to LiteLLM itself (LiteLLM's
+  # general_settings.master_key, or a scoped virtual key -- see
+  # litellm-config.example.yaml). Leave unset/commented to send no
+  # Authorization header, matching an unauthenticated LiteLLM proxy.
+  # proxy_api_key_env: "LITELLM_MASTER_KEY"
+
+routing:
+  # Hard cap on candidates attempted per request, independent of pool size.
+  max_attempts: 8
+  request_timeout_seconds: 30
+  # Read timeout for the streaming path only (max gap between received
+  # chunks, not total response time) -- deliberately much more generous
+  # than request_timeout_seconds, since a long pause between SSE chunks
+  # during a legitimate long generation isn't a stuck request.
+  # Connect/write/pool for streaming still use request_timeout_seconds
+  # above, so a genuinely unreachable provider still fails fast.
+  stream_read_timeout_seconds: 300
+  # If true, a literal (non-wildcard) model not found in LiteLLM's
+  # /v1/models fails startup instead of logging a warning and excluding it.
+  strict_model_validation: false
+  # A MODEL_NOT_FOUND failure (HTTP 404) never affects account cooldown --
+  # it's a model-identity problem, not an account-health problem. It also
+  # doesn't count against max_attempts unless the failed call took at
+  # least this long, since a fast rejection costs almost nothing.
+  model_not_found_count_threshold_seconds: 2.0
+
+cooldown:
+  base_seconds: 30
+  multiplier: 2
+  max_seconds: 3600
+  quota_cooldown_seconds: 3600
+  unknown_failure_cooldown_seconds: 60
+
+admin:
+  # Governs the admin UI's account/model Test buttons only -- never
+  # production traffic, which is entirely controlled by `routing` above.
+  # 1 = fully sequential, safest default for providers with low free-tier
+  # per-minute limits. Raise test_concurrency only once you know your
+  # accounts' actual rate limits; a burst of concurrent test calls can
+  # itself trip a limit on a provider nothing has been tested against yet.
+  test_concurrency: 1
+  test_delay_seconds: 0.3
+  test_retry_delay_seconds: 1.0
+
+security:
+  # Both settings only take effect when running with --prod (see `ai-gateway
+  # --help`) -- local/trusted-network usage without that flag is completely
+  # unaffected by this section existing at all.
+  #
+  # api_auth_token_env: name of an env var (set its value in .env) holding
+  # the bearer token required on /v1/* routes in prod mode. If left unset,
+  # /v1/* stays unauthenticated even with --prod -- an explicit choice for
+  # deployments that are already secured some other way (e.g. a private
+  # network), not an accidental gap.
+  # api_auth_token_env: "GATEWAY_API_TOKEN"
+  #
+  # admin_auth_token_env: name of an env var holding the bearer token
+  # required for the admin UI when explicitly re-enabled via --enable-admin
+  # (also requires --prod). Unlike the API token, there's no "intentionally
+  # left open" reading here -- startup refuses to start if --enable-admin is
+  # passed without this resolving to a real value, since the admin UI
+  # exposes provider accounts, API keys, and full config control.
+  # admin_auth_token_env: "GATEWAY_ADMIN_TOKEN"
+
+providers:
+  gemini:
+    litellm_prefix: "gemini/"
+    comment: "Primary chat provider -- generous free tier."
+    defaults:
+      # Wildcard discovery works for Gemini: LiteLLM supports
+      # `check_provider_endpoint: true` for this provider, which expands
+      # this into real model IDs at /v1/models. See litellm-config.example.yaml.
+      #
+      # A plain string means no comment; use {pattern, comment} for one.
+      models:
+        - pattern: "gemini-2.5-*"
+          comment: "Broad wildcard; non-chat variants filtered by exclude_models below."
+    # gemini-2.5-* also matches non-chat variants (TTS, image, audio,
+    # embeddings, computer-use, live) that will reject a normal
+    # /v1/chat/completions request with a 400. Filter them out here rather
+    # than narrowing the wildcard by hand for every new model Google ships.
+    exclude_models:
+      - "*-tts"
+      - "*-tts-*"
+      - "*-image"
+      - "*-image-*"
+      - "*-audio-*"
+      - "*embedding*"
+      - "*computer-use*"
+      - "*-live-*"
+    accounts:
+      personal:
+        # username is a free-text display name -- shown as-is everywhere
+        # in the admin UI, never sanitized or shortened. api_key_env
+        # defaults to GEMINI_PERSONAL_API_KEY if omitted.
+        username: "personal@example.com"
+      work:
+        username: "work-account"
+      backup:
+        username: "backup@example.com"
+        # Explicit env var override example:
+        api_key_env: "GEMINI_BACKUP_KEY_CUSTOM_NAME"
+        comment: "Only used when personal/work are both exhausted."
+
+  groq:
+    litellm_prefix: "groq/"
+    defaults:
+      # Groq is not in LiteLLM's documented check_provider_endpoint support
+      # list, so /v1/models can't expand a wildcard into Groq's real
+      # catalog. Use literal, exact model names here instead.
+      models:
+        - "llama-3.3-70b-versatile"
+    accounts:
+      primary:
+        username: "primary"
+
+  openrouter:
+    litellm_prefix: "openrouter/"
+    defaults:
+      # Same reasoning as Groq: use literal model names, not wildcards.
+      models:
+        - "deepseek/deepseek-chat"
+    accounts:
+      free:
+        username: "free-tier"
+
+endpoints:
+  planner:
+    comment: "General-purpose planning/reasoning endpoint."
+    providers:
+      - name: gemini
+        # models/accounts omitted -> uses provider defaults.models and all accounts
+      - name: groq
+        accounts:
+          - primary
+
+  coder:
+    providers:
+      - name: groq
+      - name: gemini
+        accounts:
+          - work
+          - backup
+
+  writer:
+    providers:
+      - name: openrouter
+      - name: gemini
+
+  reviewer:
+    providers:
+      - name: gemini
+        accounts:
+          - personal

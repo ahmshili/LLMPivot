@@ -1,0 +1,98 @@
+# Example LiteLLM proxy configuration for use with AI Gateway.
+#
+# This is NOT part of the ai-gateway package -- it belongs in your LiteLLM
+# deployment (e.g. ai-stack/litellm/config.yaml). Copy/adapt it there.
+#
+# Key differences from a typical LiteLLM config:
+#   * No accounts, no per-account API keys here. AI Gateway injects the
+#     correct provider API key per request via `api_key` in the request
+#     body (LiteLLM's "Clientside LLM Credentials" feature). LiteLLM only
+#     needs a placeholder key per provider as a fallback.
+#   * `router_settings.num_retries: 0`, explicitly. LiteLLM applies its own
+#     default internal retry count even with no router_settings block at
+#     all, and on those internal retries it can fail to carry forward the
+#     dynamic per-request `api_key` override -- silently falling back to
+#     the placeholder key above, which is unset. This produces a genuinely
+#     confusing symptom: the exact same request succeeds or fails at
+#     random depending on which retry attempt LiteLLM happens to return.
+#     Confirmed in practice; this is not optional. AI Gateway owns all
+#     retries and account rotation -- LiteLLM must make exactly one
+#     attempt per call.
+#   * Wildcard deployments (`gemini/*`, `groq/*`, `openrouter/*`) so any
+#     concrete model AI Gateway asks for under that provider routes
+#     correctly, without registering every model individually.
+
+model_list:
+  - model_name: "gemini/*"
+    litellm_params:
+      model: "gemini/*"
+      api_key: os.environ/GEMINI_API_KEY  # placeholder; overridden per-request
+      # Required for AI Gateway's per-account credential injection to
+      # actually take effect instead of silently falling back to the
+      # placeholder key above:
+      configurable_clientside_auth_params: ["api_key"]
+    litellm_settings:
+      # Gemini is on LiteLLM's documented check_provider_endpoint support
+      # list, so /v1/models can return Gemini's real, current model catalog
+      # instead of the literal string "gemini/*" -- this is what allows AI
+      # Gateway's `gemini-2.5-*` wildcard to resolve to real models.
+      check_provider_endpoint: true
+
+  - model_name: "groq/*"
+    litellm_params:
+      model: "groq/*"
+      api_key: os.environ/GROQ_API_KEY
+      configurable_clientside_auth_params: ["api_key"]
+    # No check_provider_endpoint here: Groq is not on LiteLLM's documented
+    # support list for it as of this writing, so /v1/models will not expand
+    # Groq's catalog. Use literal (non-wildcard) model names in AI
+    # Gateway's own config.yaml for Groq models.
+
+  - model_name: "openrouter/*"
+    litellm_params:
+      model: "openrouter/*"
+      api_key: os.environ/OPENROUTER_API_KEY
+      configurable_clientside_auth_params: ["api_key"]
+    # Same reasoning as Groq -- use literal model names on the gateway side.
+
+  - model_name: "mistral/*"
+    litellm_params:
+      model: "mistral/*"
+      api_key: os.environ/MISTRAL_BARRIER_LILY_KILN_DUCK_COM_API_KEY
+      configurable_clientside_auth_params: ["api_key"]
+
+# --- Optional: restrict which models this proxy will serve -------------
+#
+# By default, LITELLM_MASTER_KEY is unset and this proxy has NO
+# authentication at all -- anyone who can reach it can call any
+# configured model. To turn access control ON:
+#
+#   1. Uncomment general_settings.master_key below and set
+#      LITELLM_MASTER_KEY in your environment.
+#   2. Generate a scoped virtual key restricted to exactly the wildcard
+#      groups above, and use THAT (not the master key) as the value for
+#      AI Gateway's litellm.proxy_api_key_env:
+#
+#      curl -X POST 'http://localhost:4000/key/generate' \
+#        -H 'Authorization: Bearer '"$LITELLM_MASTER_KEY" \
+#        -H 'Content-Type: application/json' \
+#        -d '{"models": ["gemini/*", "groq/*", "openrouter/*"]}'
+#
+#   3. Put the returned key in AI Gateway's .env, and set
+#      `litellm.proxy_api_key_env: "AI_GATEWAY_LITELLM_KEY"` (or whatever
+#      you name it) in AI Gateway's config.yaml.
+#
+# To turn access control OFF again: comment master_key back out and
+# unset litellm.proxy_api_key_env on the gateway side. Both sides must
+# agree -- if only one side is toggled, every request will 401.
+
+router_settings:
+  # Required -- see the comment block at the top of this file. Without
+  # this, LiteLLM's own default retry count can silently drop the
+  # per-request api_key override on a retry attempt, causing intermittent
+  # "Missing API key" failures on requests that would otherwise succeed.
+  num_retries: 0
+
+general_settings:
+  # master_key: os.environ/LITELLM_MASTER_KEY
+  allow_requests_on_db_unavailable: false

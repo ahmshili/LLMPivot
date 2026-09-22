@@ -1,0 +1,485 @@
+{
+  "$defs": {
+    "AccountConfig": {
+      "additionalProperties": false,
+      "description": "A single account (API key) belonging to a provider.\n\nAccounts intentionally hold no secrets in YAML. ``api_key_env`` names an\nenvironment variable that holds the actual key; if omitted, it defaults\nto ``{PROVIDER}_{ACCOUNT}_API_KEY`` (both upper-cased, non-alphanumeric\ncharacters replaced with ``_``).\n\n``username`` is a free-text, never-sanitized, always-editable display\nname -- the only user-facing identity for the account. It is entirely\nseparate from the account's config.yaml dict key / admin URL segment,\nwhich is a stable slug generated once at creation and not intended to\nbe seen or edited directly.",
+      "properties": {
+        "username": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Free-text display name for this account (e.g. an email address). Never sanitized.",
+          "title": "Username"
+        },
+        "api_key_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of the environment variable holding this account's API key. Defaults to {PROVIDER}_{ACCOUNT}_API_KEY if omitted.",
+          "title": "Api Key Env"
+        },
+        "api_base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional per-account API base override, forwarded to LiteLLM.",
+          "title": "Api Base"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Free-text operator note.",
+          "title": "Comment"
+        }
+      },
+      "title": "AccountConfig",
+      "type": "object"
+    },
+    "AdminConfig": {
+      "additionalProperties": false,
+      "description": "Settings for the admin UI's account/model Test buttons -- separate\nfrom RoutingConfig, since these govern ad-hoc operator probes, not\nproduction request routing.",
+      "properties": {
+        "test_concurrency": {
+          "default": 1,
+          "description": "How many admin UI test calls run in parallel during a bulk 'test all accounts' run. 1 = fully sequential (safest for providers with low free-tier per-minute limits). Raise this only when you understand your accounts' rate limits.",
+          "minimum": 1,
+          "title": "Test Concurrency",
+          "type": "integer"
+        },
+        "test_delay_seconds": {
+          "default": 0.3,
+          "description": "Delay after each admin UI test call before starting the next one, applied per concurrency slot. Sequential runs (the default) simply pace one call every test_delay_seconds.",
+          "minimum": 0,
+          "title": "Test Delay Seconds",
+          "type": "number"
+        },
+        "test_retry_delay_seconds": {
+          "default": 1.0,
+          "description": "Delay before the single automatic retry of a test call that failed with TEMP_RATE_LIMIT-adjacent TRANSIENT or NETWORK_FAILURE outcomes. Other failure types are never retried, since retrying them can't change the outcome.",
+          "minimum": 0,
+          "title": "Test Retry Delay Seconds",
+          "type": "number"
+        }
+      },
+      "title": "AdminConfig",
+      "type": "object"
+    },
+    "CooldownConfig": {
+      "additionalProperties": false,
+      "description": "Cooldown durations for each failure category.\n\n``base_seconds`` / ``multiplier`` / ``max_seconds`` govern exponential\nbackoff for transient-style failures. Quota exhaustion and unknown\nfailures use their own fixed durations rather than the backoff curve,\nsince \"quota exhausted\" is a clock-based reset, not a retry-storm signal.",
+      "properties": {
+        "base_seconds": {
+          "default": 30.0,
+          "exclusiveMinimum": 0,
+          "title": "Base Seconds",
+          "type": "number"
+        },
+        "multiplier": {
+          "default": 2.0,
+          "exclusiveMinimum": 1,
+          "title": "Multiplier",
+          "type": "number"
+        },
+        "max_seconds": {
+          "default": 3600.0,
+          "exclusiveMinimum": 0,
+          "title": "Max Seconds",
+          "type": "number"
+        },
+        "quota_cooldown_seconds": {
+          "default": 3600.0,
+          "exclusiveMinimum": 0,
+          "title": "Quota Cooldown Seconds",
+          "type": "number"
+        },
+        "unknown_failure_cooldown_seconds": {
+          "default": 60.0,
+          "exclusiveMinimum": 0,
+          "title": "Unknown Failure Cooldown Seconds",
+          "type": "number"
+        }
+      },
+      "title": "CooldownConfig",
+      "type": "object"
+    },
+    "EndpointConfig": {
+      "additionalProperties": false,
+      "description": "An endpoint is a virtual, capability-named model (e.g. 'planner')\nthat clients select via the OpenAI ``model`` field. It resolves, in\npriority order, to a list of provider entries.",
+      "properties": {
+        "providers": {
+          "items": {
+            "$ref": "#/$defs/EndpointProviderConfig"
+          },
+          "minItems": 1,
+          "title": "Providers",
+          "type": "array"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Free-text operator note.",
+          "title": "Comment"
+        }
+      },
+      "title": "EndpointConfig",
+      "type": "object"
+    },
+    "EndpointProviderConfig": {
+      "additionalProperties": false,
+      "description": "A single provider entry within an endpoint's priority list.\n\n``models`` and ``accounts``, when omitted, fall back to the provider's\n``defaults.models`` and the provider's full account list respectively.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "models": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override model list for this provider within this endpoint.",
+          "title": "Models"
+        },
+        "accounts": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override account list for this provider within this endpoint.",
+          "title": "Accounts"
+        },
+        "include_remaining_models": {
+          "default": false,
+          "description": "If true, every other live model for this provider (after exclude_models filtering) is appended after `models`, re-resolved dynamically at every startup/reload -- never baked into a snapshot. Omitted (false) by default, so this never appears in config.yaml unless explicitly turned on.",
+          "title": "Include Remaining Models",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "EndpointProviderConfig",
+      "type": "object"
+    },
+    "LiteLLMConfig": {
+      "additionalProperties": false,
+      "description": "Connection settings for the LiteLLM transport backend.",
+      "properties": {
+        "base_url": {
+          "default": "http://localhost:4000",
+          "title": "Base Url",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 30.0,
+          "exclusiveMinimum": 0,
+          "title": "Timeout Seconds",
+          "type": "number"
+        },
+        "proxy_api_key_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of the environment variable holding the key used to authenticate to the LiteLLM proxy itself (its general_settings.master_key, or a scoped virtual key). This is separate from per-account provider API keys, which are injected per request. If unset, no Authorization header is sent to LiteLLM -- this is the on/off toggle for proxy-side auth.",
+          "title": "Proxy Api Key Env"
+        }
+      },
+      "title": "LiteLLMConfig",
+      "type": "object"
+    },
+    "ModelEntry": {
+      "additionalProperties": false,
+      "description": "A model pattern with an optional comment attached, and an optional\nenabled flag.\n\nKept separate from a bare string so plain patterns (the overwhelming\nmajority) still serialize as plain strings -- only entries that\nactually have a comment or are disabled pay for the richer object\nform. `enabled` defaults to True and is excluded from serialization\nin that case (config_writer uses `exclude_defaults=True`), so a\nnormal, always-active entry never gains this field in config.yaml --\nonly entries the user has actually disabled show `enabled: false`.",
+      "properties": {
+        "pattern": {
+          "title": "Pattern",
+          "type": "string"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pattern"
+      ],
+      "title": "ModelEntry",
+      "type": "object"
+    },
+    "ProviderConfig": {
+      "additionalProperties": false,
+      "description": "A provider groups a LiteLLM prefix, a default model list, and a pool\nof accounts (API keys) that can serve requests for that provider.",
+      "properties": {
+        "litellm_prefix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Prefix LiteLLM expects for this provider's models, e.g. 'gemini/'. Defaults to '{provider_name}/' if omitted.",
+          "title": "Litellm Prefix"
+        },
+        "defaults": {
+          "$ref": "#/$defs/ProviderDefaults"
+        },
+        "exclude_models": {
+          "description": "Glob patterns for models to remove after expansion, even if explicitly listed or matched by a wildcard (e.g. ['*-tts', '*-image*', '*-audio*'] to keep a broad chat-model wildcard from picking up non-chat variants).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Exclude Models",
+          "type": "array"
+        },
+        "accounts": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AccountConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "Named accounts for this provider. A null value uses all defaults.",
+          "title": "Accounts",
+          "type": "object"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Free-text operator note.",
+          "title": "Comment"
+        }
+      },
+      "title": "ProviderConfig",
+      "type": "object"
+    },
+    "ProviderDefaults": {
+      "additionalProperties": false,
+      "description": "Default model list for a provider, used when an endpoint does not\noverride which models to use for that provider.\n\nEntries may be exact model names (``\"gemini-2.5-flash\"``) or glob-style\nwildcards (``\"gemini-2.5-*\"``), each either a bare string or a\n``{pattern, comment}`` object. Wildcards are compiled into regex once\nat startup by ``CandidateResolver`` and matched against the model list\nLiteLLM reports at ``/v1/models``.",
+      "properties": {
+        "models": {
+          "description": "Exact model names or glob wildcards (e.g. 'gemini-2.5-*'), optionally with a comment.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ModelEntry"
+              }
+            ]
+          },
+          "title": "Models",
+          "type": "array"
+        },
+        "standard_models": {
+          "description": "A saved pool of models kept for quick-selection/fallback, NOT part of active routing priority -- CandidateResolver never reads this list. Mutually exclusive with `models`: a pattern should never appear in both lists at once (enforced by the admin UI's move actions, and defensively re-enforced on save -- see admin/routes.py's save_models, priority always wins any conflict).",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ModelEntry"
+              }
+            ]
+          },
+          "title": "Standard Models",
+          "type": "array"
+        }
+      },
+      "title": "ProviderDefaults",
+      "type": "object"
+    },
+    "RoutingConfig": {
+      "additionalProperties": false,
+      "description": "Global routing limits, independent of pool size, so an exhausted\nprovider cannot turn a single request into dozens of sequential calls.",
+      "properties": {
+        "max_attempts": {
+          "default": 8,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "request_timeout_seconds": {
+          "default": 30.0,
+          "exclusiveMinimum": 0,
+          "title": "Request Timeout Seconds",
+          "type": "number"
+        },
+        "stream_read_timeout_seconds": {
+          "default": 300.0,
+          "description": "Read timeout used only for the streaming path, applied to the gap between individual chunks, not total response time. Deliberately much more generous than request_timeout_seconds: a long pause between SSE chunks during legitimate generation (long agentic code-generation responses in particular) isn't a stuck request, and httpx applies a single timeout value to every category (connect/read/write/pool) unless told otherwise -- using request_timeout_seconds here as well would kill a healthy, still-generating stream just because two tokens took a while to arrive. Connect/write/pool for the streaming path still use request_timeout_seconds, so a genuinely unreachable provider still fails fast at connection time.",
+          "exclusiveMinimum": 0,
+          "title": "Stream Read Timeout Seconds",
+          "type": "number"
+        },
+        "strict_model_validation": {
+          "default": false,
+          "description": "If true, a literal (non-wildcard) configured model that is not found in LiteLLM's reported /v1/models list fails startup instead of being logged as a warning and excluded from routing.",
+          "title": "Strict Model Validation",
+          "type": "boolean"
+        },
+        "model_not_found_count_threshold_seconds": {
+          "default": 2.0,
+          "description": "A MODEL_NOT_FOUND failure never affects account cooldown state, but it only counts against max_attempts if the failed call took at least this long -- a fast rejection is treated as free, while a slow one (comparable to a real model call) still consumes part of the attempt budget.",
+          "exclusiveMinimum": 0,
+          "title": "Model Not Found Count Threshold Seconds",
+          "type": "number"
+        }
+      },
+      "title": "RoutingConfig",
+      "type": "object"
+    },
+    "SecurityConfig": {
+      "additionalProperties": false,
+      "description": "Prod-mode authentication settings. Both stay unenforced by default,\nexactly like everything else today -- enforcement is opt-in via CLI\nflags at startup (--prod, --enable-admin), not automatic just because\nthese are configured, so local/trusted-network usage never changes.\n\nFollows this project's existing secret pattern (proxy_api_key_env,\neach account's api_key_env): config.yaml names an env var, the actual\nsecret value lives in .env, never embedded directly here.",
+      "properties": {
+        "api_auth_token_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Env var holding the bearer token required on /v1/* routes when prod mode is enabled via --prod. If unset, /v1/* stays unauthenticated even in prod mode -- an explicit choice (e.g. already-secured private network), not a silent gap.",
+          "title": "Api Auth Token Env"
+        },
+        "admin_auth_token_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Env var holding the bearer token required for /admin/* routes when explicitly re-enabled in prod mode via --enable-admin. Deliberately a separate secret from api_auth_token_env, to keep blast radius contained if one leaks. Startup fails if --enable-admin is passed but this isn't configured with a real value -- unlike the API token, there's no 'intentionally left open' reading for the admin UI, given what it exposes.",
+          "title": "Admin Auth Token Env"
+        }
+      },
+      "title": "SecurityConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Root configuration object for the AI Gateway.",
+  "properties": {
+    "litellm": {
+      "$ref": "#/$defs/LiteLLMConfig"
+    },
+    "routing": {
+      "$ref": "#/$defs/RoutingConfig"
+    },
+    "cooldown": {
+      "$ref": "#/$defs/CooldownConfig"
+    },
+    "admin": {
+      "$ref": "#/$defs/AdminConfig"
+    },
+    "security": {
+      "$ref": "#/$defs/SecurityConfig"
+    },
+    "providers": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ProviderConfig"
+      },
+      "title": "Providers",
+      "type": "object"
+    },
+    "endpoints": {
+      "additionalProperties": {
+        "$ref": "#/$defs/EndpointConfig"
+      },
+      "title": "Endpoints",
+      "type": "object"
+    }
+  },
+  "title": "AI Gateway Configuration",
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

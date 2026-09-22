@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}AI Gateway Admin{% endblock %}</title>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script src="https://unpkg.com/sortablejs@1.15.2/Sortable.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 960px; margin: 0 auto; padding: 1rem 1.5rem 3rem; line-height: 1.4; }
+  nav { display: flex; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #8884; margin-bottom: 1.5rem; }
+  nav a { text-decoration: none; font-weight: 600; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.15rem; margin-top: 2rem; } h3 { font-size: 1rem; }
+  table { border-collapse: collapse; width: 100%; margin: 0.75rem 0 1.5rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #8883; vertical-align: top; }
+  form.inline { display: inline; }
+  label { display: block; margin: 0.6rem 0 0.2rem; font-weight: 600; font-size: 0.9rem; }
+  input[type=text], input[type=password], input[type=number], select, textarea { width: 100%; max-width: 480px; padding: 0.35rem 0.5rem; box-sizing: border-box; }
+  textarea { font-family: ui-monospace, monospace; min-height: 5rem; }
+  .hint { color: #888; font-size: 0.85rem; margin-top: 0.15rem; }
+  .actions { margin-top: 1rem; display: flex; gap: 0.6rem; }
+  button, .btn { padding: 0.4rem 0.9rem; cursor: pointer; }
+  .btn-danger { color: #b00; }
+  .errors { background: #b0000015; border: 1px solid #b0000055; padding: 0.6rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
+  .errors li { color: #b00; }
+  .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+  .badge-ok { background: #0a02; color: #0a0; }
+  .badge-fail { background: #b0002; color: #b00; }
+  .badge-cooldown { background: #fa02; color: #a70; }
+  .badge-disabled { background: #8882; color: #666; }
+  .provider-row, fieldset { border: 1px solid #8884; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
+  .checkbox-list { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; max-width: 640px; }
+  .checkbox-list label { display: flex; align-items: center; gap: 0.3rem; font-weight: normal; margin: 0; }
+  .checkbox-list input { width: auto; }
+  code { background: #8882; padding: 0.05rem 0.35rem; border-radius: 3px; }
+  .comment-icon { cursor: help; opacity: 0.6; margin-left: 0.3rem; }
+  .picker { border: 1px solid #8884; border-radius: 6px; padding: 0.6rem; max-width: 640px; }
+  .picker .filter-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .picker .filter-row input[type=text] { flex: 1; max-width: none; }
+  .picker .bulk-actions { display: flex; gap: 0.4rem; }
+  .picker .bulk-actions button { padding: 0.2rem 0.6rem; font-size: 0.85rem; }
+  .picker-scroll { max-height: 220px; overflow-y: auto; border: 1px solid #8883; border-radius: 4px; padding: 0.4rem 0.6rem; }
+  .picker-scroll label { display: flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0; font-weight: normal; }
+  .picker-scroll input { width: auto; }
+  table.models-table th, table.models-table td { padding: 0.3rem 0.5rem; }
+  table.models-table input[type=text] { max-width: none; padding: 0.2rem 0.4rem; }
+  table.models-table .icon-btn { padding: 0.1rem 0.4rem; }
+  #accounts-table .col-envvar, #accounts-table .col-status { max-width: 140px; overflow-wrap: anywhere; }
+  #accounts-table .col-envvar code, #accounts-table .apikey-col code { overflow-wrap: anywhere; user-select: all; }
+  #accounts-table .apikey-col { max-width: 160px; }
+  #accounts-table .col-username { max-width: 260px; overflow-wrap: break-word; }
+  #accounts-table input[name="model"] { max-width: 170px; padding: 0.25rem 0.4rem; }
+  tr.model-disabled { opacity: 0.45; }
+  tr.model-disabled code { text-decoration: line-through; }
+  .icon-btn.model-toggle-btn { color: #4a90e2; border-color: #4a90e255; }
+  .icon-btn.model-toggle-btn.toggle-off { color: #888; border-color: #8883; }
+  .add-model-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; }
+  .add-model-row input[type=text] { max-width: 360px; }
+  .models-editor-wrap [data-action="append-defaults"] { margin-bottom: 0.6rem; font-size: 0.85rem; }
+  .status-msg { font-size: 0.85rem; margin-top: 0.3rem; }
+  .status-msg.ok { color: #0a0; } .status-msg.fail { color: #b00; }
+
+  /* --- Reorderable list UI (drag handle, selection, bulk-move bar) --- */
+  .drag-handle { display: inline-flex; align-items: center; justify-content: center; cursor: grab; opacity: 0.45; padding: 0 0.35rem; user-select: none; vertical-align: middle; color: currentColor; transition: opacity 0.15s ease; }
+  .drag-handle:hover { opacity: 0.9; }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-handle svg { width: 14px; height: 14px; display: block; }
+  tr.sortable-ghost, .provider-row.sortable-ghost { opacity: 0.3; }
+  tr.sortable-chosen, .provider-row.sortable-chosen { background: #8881; }
+  tr.sortable-selected, .provider-row.sortable-selected { background: #4a90e215; outline: 1px solid #4a90e255; outline-offset: -1px; }
+  input.row-select { width: auto; margin-right: 0.5rem; accent-color: #4a90e2; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.3rem 0.5rem; border-radius: 6px; border: 1px solid #8884; background: transparent; cursor: pointer; transition: background 0.12s ease, opacity 0.12s ease; }
+  .icon-btn:hover:not(:disabled) { background: #8882; }
+  .icon-btn:disabled { opacity: 0.3; cursor: default; }
+  .icon-btn.btn-danger { border-color: #b0003a; color: #b00; }
+  .icon-btn.btn-danger:hover:not(:disabled) { background: #b0001a; }
+  .bulk-reorder-bar {
+    display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0.6rem; padding: 0.5rem 0.8rem;
+    background: #4a90e212; border: 1px solid #4a90e23a; border-radius: 8px;
+    box-shadow: 0 1px 3px #0002;
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .bulk-reorder-bar.bulk-reorder-bar-visible { opacity: 1; transform: translateY(0); }
+  .bulk-reorder-bar .bulk-count { font-size: 0.85rem; font-weight: 600; color: #4a90e2; white-space: nowrap; }
+  .bulk-reorder-bar .bulk-group { display: flex; align-items: center; gap: 0.35rem; }
+  .bulk-reorder-bar .bulk-group + .bulk-group { padding-left: 0.7rem; border-left: 1px solid #8883; }
+  .bulk-reorder-bar .icon-btn { padding: 0.25rem 0.45rem; }
+  .bulk-reorder-bar .bulk-clear { margin-left: auto; border: none; background: none; opacity: 0.6; }
+  .bulk-reorder-bar .bulk-clear:hover { opacity: 1; background: none; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="/admin/">Dashboard</a>
+  <a href="/admin/providers">Providers</a>
+  <a href="/admin/endpoints">Endpoints</a>
+  <a href="/admin/export">Export</a>
+</nav>
+{% if success %}<p style="color:#0a0;">{{ success }}</p>{% endif %}
+
+<script>
+// Renders a filter box + "select all visible / clear all" buttons + a
+// scrollable checkbox list into `container`, given `items` = [{value, label, checked}].
+// Returns nothing; checkboxes are named exactly as passed in `items[i].name`.
+function renderPicker(container, items) {
+  container.innerHTML = '';
+  container.classList.add('picker');
+
+  const filterRow = document.createElement('div');
+  filterRow.className = 'filter-row';
+  const filterInput = document.createElement('input');
+  filterInput.type = 'text';
+  filterInput.placeholder = 'Filter...';
+  const selectAllBtn = document.createElement('button');
+  selectAllBtn.type = 'button';
+  selectAllBtn.textContent = 'Select visible';
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.textContent = 'Clear all';
+  const bulk = document.createElement('div');
+  bulk.className = 'bulk-actions';
+  bulk.appendChild(selectAllBtn);
+  bulk.appendChild(clearBtn);
+  filterRow.appendChild(filterInput);
+  filterRow.appendChild(bulk);
+  container.appendChild(filterRow);
+
+  const scroll = document.createElement('div');
+  scroll.className = 'picker-scroll';
+  container.appendChild(scroll);
+
+  const labelEls = items.map(function (item) {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.name = item.name;
+    input.value = item.value;
+    input.checked = !!item.checked;
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(item.label));
+    label.dataset.filterText = item.label.toLowerCase();
+    scroll.appendChild(label);
+    return label;
+  });
+
+  filterInput.addEventListener('input', function () {
+    const q = filterInput.value.toLowerCase();
+    labelEls.forEach(function (label) {
+      label.style.display = label.dataset.filterText.includes(q) ? 'flex' : 'none';
+    });
+  });
+  selectAllBtn.addEventListener('click', function () {
+    labelEls.forEach(function (label) {
+      if (label.style.display !== 'none') {
+        label.querySelector('input').checked = true;
+      }
+    });
+  });
+  clearBtn.addEventListener('click', function () {
+    labelEls.forEach(function (label) {
+      label.querySelector('input').checked = false;
+    });
+  });
+}
+</script>
+
+<script>
+// Ordered, reorderable list editor for model names -- no comments (that's
+// provider-level metadata, not relevant per-endpoint), just add/remove/
+// reorder. Returns {getList, setList} so a form submit handler can pull
+// the current order out right before serializing it.
+function createModelListEditor(container, initialModels, datalistId, opts) {
+  opts = opts || {};
+  let list = initialModels.slice();
+  let providerName = opts.providerName || null;
+  let accounts = opts.accounts || [];
+
+  container.innerHTML = '';
+  const addRow = document.createElement('div');
+  addRow.className = 'add-model-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Type or pick a model';
+  if (datalistId) input.setAttribute('list', datalistId);
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '+ Add';
+  addRow.appendChild(input);
+  addRow.appendChild(addBtn);
+
+  if (accounts.length) {
+    const addTestSelect = document.createElement('select');
+    accounts.forEach(function (a) {
+      const option = document.createElement('option');
+      option.value = a.key;
+      option.textContent = a.username;
+      addTestSelect.appendChild(option);
+    });
+    const addTestBtn = document.createElement('button');
+    addTestBtn.type = 'button';
+    addTestBtn.textContent = 'Test';
+    addTestBtn.title = 'Test the model above against the selected account, without adding it first';
+    const addTestResult = document.createElement('span');
+    addTestBtn.addEventListener('click', function () {
+      const model = input.value.trim();
+      if (!model || !providerName) return;
+      addTestResult.textContent = 'Testing\u2026';
+      fetch('/admin/providers/' + encodeURIComponent(providerName) + '/accounts/' + encodeURIComponent(addTestSelect.value) + '/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'model=' + encodeURIComponent(model),
+      })
+        .then(function (r) { return r.text(); })
+        .then(function (html) { addTestResult.innerHTML = html; })
+        .catch(function () { addTestResult.textContent = 'Request failed.'; });
+    });
+    addRow.appendChild(addTestSelect);
+    addRow.appendChild(addTestBtn);
+    addRow.appendChild(addTestResult);
+  }
+
+  const table = document.createElement('table');
+  table.className = 'models-table';
+  const tbody = document.createElement('tbody');
+  table.appendChild(tbody);
+
+  container.appendChild(addRow);
+  container.appendChild(table);
+
+  function render() {
+    tbody.innerHTML = '';
+    list.forEach(function (model, i) {
+      const tr = document.createElement('tr');
+      tr.dataset.model = model;
+
+      const orderTd = document.createElement('td');
+      const upBtn = makeIconButton('up', 'Move up');
+      upBtn.disabled = (i === 0);
+      upBtn.addEventListener('click', function () {
+        [list[i - 1], list[i]] = [list[i], list[i - 1]];
+        render();
+        reorderable.refresh();
+      });
+      const downBtn = makeIconButton('down', 'Move down');
+      downBtn.disabled = (i === list.length - 1);
+      downBtn.addEventListener('click', function () {
+        [list[i + 1], list[i]] = [list[i], list[i + 1]];
+        render();
+        reorderable.refresh();
+      });
+      orderTd.appendChild(upBtn); orderTd.appendChild(downBtn);
+
+      const nameTd = document.createElement('td');
+      const code = document.createElement('code');
+      code.textContent = model;
+      nameTd.appendChild(code);
+
+      const testTd = document.createElement('td');
+      if (accounts.length) {
+        const select = document.createElement('select');
+        accounts.forEach(function (a) {
+          const option = document.createElement('option');
+          option.value = a.key;
+          option.textContent = a.username;
+          select.appendChild(option);
+        });
+        const testBtn = document.createElement('button');
+        testBtn.type = 'button';
+        testBtn.textContent = 'Test';
+        const resultSpan = document.createElement('span');
+        testBtn.addEventListener('click', function () {
+          if (!providerName) return;
+          resultSpan.textContent = 'Testing\u2026';
+          fetch('/admin/providers/' + encodeURIComponent(providerName) + '/accounts/' + encodeURIComponent(select.value) + '/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'model=' + encodeURIComponent(model),
+          })
+            .then(function (r) { return r.text(); })
+            .then(function (html) { resultSpan.innerHTML = html; })
+            .catch(function () { resultSpan.textContent = 'Request failed.'; });
+        });
+        testTd.appendChild(select);
+        testTd.appendChild(testBtn);
+        testTd.appendChild(resultSpan);
+      }
+
+      const removeTd = document.createElement('td');
+      const removeBtn = makeIconButton('trash', 'Remove', 'btn-danger');
+      removeBtn.addEventListener('click', function () {
+        list.splice(i, 1);
+        render();
+        reorderable.refresh();
+      });
+      removeTd.appendChild(removeBtn);
+
+      tr.appendChild(orderTd); tr.appendChild(nameTd); tr.appendChild(testTd); tr.appendChild(removeTd);
+      tbody.appendChild(tr);
+    });
+  }
+
+  addBtn.addEventListener('click', function () {
+    const value = input.value.trim();
+    if (!value || list.includes(value)) { input.value = ''; return; }
+    list.push(value);
+    input.value = '';
+    render();
+    reorderable.refresh();
+  });
+
+  // Rows carry the model name as data so drag/bulk-move can resolve the
+  // new `list` order purely from the resulting DOM order -- no separate
+  // index bookkeeping needed since `render()` already keys tr[data-model].
+  const reorderable = makeReorderable(
+    tbody,
+    function () { return Array.from(tbody.querySelectorAll('tr')); },
+    function (orderedRows) {
+      list = orderedRows.map(function (tr) { return tr.dataset.model; });
+      render();
+      reorderable.refresh();
+    },
+    {
+      onRemove: function (selectedRows) {
+        const toRemove = selectedRows.map(function (tr) { return tr.dataset.model; });
+        list = list.filter(function (m) { return toRemove.indexOf(m) === -1; });
+        render();
+        reorderable.refresh();
+      },
+    }
+  );
+
+  render();
+  reorderable.refresh();
+
+  return {
+    getList: function () { return list; },
+    setList: function (newList) { list = newList.slice(); render(); reorderable.refresh(); },
+  };
+}
+</script>
+
+<script>
+// Mount the MultiDrag plugin once, globally, right after Sortable loads --
+// lets a drag on any checkbox-selected row carry the whole selection with
+// it. Wrapped defensively: if a future SortableJS build renames/removes
+// this plugin, single-item drag (the core feature) must keep working
+// regardless, so we never let this throw.
+try {
+  if (window.Sortable && window.Sortable.MultiDrag) {
+    Sortable.mount(new Sortable.MultiDrag());
+  }
+} catch (e) { /* multi-item drag degrades to single-item drag; not fatal */ }
+
+// Small inline "grip" icon (six dots) for the drag handle -- an actual SVG
+// renders identically on every platform/font, unlike a Unicode glyph.
+const DRAG_HANDLE_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">'
+  + '<circle cx="5" cy="3" r="1.3"/><circle cx="11" cy="3" r="1.3"/>'
+  + '<circle cx="5" cy="8" r="1.3"/><circle cx="11" cy="8" r="1.3"/>'
+  + '<circle cx="5" cy="13" r="1.3"/><circle cx="11" cy="13" r="1.3"/>'
+  + '</svg>';
+
+// Shared icon set (Feather/Lucide-style outline icons, hand-written inline
+// so nothing needs an external icon font or CDN -- keeps the admin UI
+// fully usable offline, and renders identically everywhere) used across
+// every reorderable list's buttons, replacing plain ASCII/Unicode glyphs.
+const ICON_SVG = {
+  up: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>',
+  down: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>',
+  toTop: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="4" x2="20" y2="4"></line><polyline points="8 14 12 10 16 14"></polyline><line x1="12" y1="10" x2="12" y2="20"></line></svg>',
+  toBottom: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"></line><polyline points="16 10 12 14 8 10"></polyline><line x1="12" y1="14" x2="12" y2="4"></line></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>',
+  selectAll: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L7 17l-5-5"></path><path d="M22 10L13.5 18.5 11 16"></path></svg>',
+  clear: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+  power: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="10"></line><path d="M6.3 6.3a9 9 0 1 0 11.4 0"></path></svg>',
+};
+
+// Small helper: build an icon-only button with an accessible label.
+function makeIconButton(iconKey, label, extraClass) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'icon-btn' + (extraClass ? ' ' + extraClass : '');
+  btn.innerHTML = ICON_SVG[iconKey];
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  return btn;
+}
+
+// Shared drag-and-drop + checkbox-multiselect-bulk-move behavior, layered
+// onto any list of "row" elements that already support single-row
+// reordering. This does NOT own the row DOM or the data model -- callers
+// keep whatever structure they already have (client-side JS array, live
+// DOM fieldsets, or immediate-persist table rows). It only needs three
+// things per list:
+//
+//   1. A container element holding the rows in order (must be the direct
+//      parent of the rows -- e.g. a <tbody>, not the <table> itself).
+//   2. A `getRows()` function returning the current row elements in order
+//      (called fresh each time, since rows can be added/removed/re-rendered
+//      by the caller independently of this module).
+//   3. An `onReorder(orderedRowEls)` callback, invoked with the full new
+//      row order any time a drag-drop or bulk-move action completes. The
+//      caller decides what that means: re-sort a backing array, or fire an
+//      immediate POST with the new key order.
+//
+// Drag handle and selection checkbox are injected automatically -- callers
+// don't template them. The existing single-row move-up/move-down/move-top/
+// move-bottom buttons (already present in several templates) are left
+// completely alone: they keep working exactly as before, independent of
+// this module, as a no-JS-drag-required fallback.
+function makeReorderable(container, getRows, onReorder, opts) {
+  opts = opts || {};
+  const enableBulk = opts.bulk !== false; // default on
+  const onRemove = opts.onRemove || null; // if provided, adds a "remove selected" bulk action
+
+  function ensureHandle(row) {
+    if (row.querySelector('[data-role="drag-handle"]')) return;
+    const handle = document.createElement('span');
+    handle.setAttribute('data-role', 'drag-handle');
+    handle.className = 'drag-handle';
+    handle.title = 'Drag to reorder';
+    handle.innerHTML = DRAG_HANDLE_SVG;
+    row.insertBefore(handle, row.firstChild);
+  }
+
+  function setSelected(row, cb, selected) {
+    row.classList.toggle('sortable-selected', selected);
+    // Sortable's MultiDrag keeps its own internal selection bookkeeping
+    // separate from CSS classes; feed it through the same utils a user's
+    // click would trigger, so a checkbox-selected row actually drags
+    // together with the rest of the selection, not just visually.
+    try {
+      if (window.Sortable && Sortable.utils) {
+        if (selected) Sortable.utils.select(row); else Sortable.utils.deselect(row);
+      }
+    } catch (e) { /* selection still works via bulk-move buttons regardless */ }
+  }
+
+  // Tracks the row index of the last checkbox click, for shift-click range
+  // selection (Gmail/Sheets-style: click one row, shift-click another,
+  // everything in between takes on the just-clicked row's new state).
+  let lastClickedIndex = null;
+
+  function ensureCheckbox(row) {
+    if (!enableBulk) return;
+    if (row.querySelector('[data-role="select-row"]')) return;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.setAttribute('data-role', 'select-row');
+    cb.className = 'row-select';
+    cb.addEventListener('click', function (e) {
+      const rows = getRows();
+      const idx = rows.indexOf(row);
+      if (e.shiftKey && lastClickedIndex !== null && rows[lastClickedIndex]) {
+        const start = Math.min(idx, lastClickedIndex);
+        const end = Math.max(idx, lastClickedIndex);
+        const shouldCheck = cb.checked; // this row's just-toggled new state
+        for (let i = start; i <= end; i++) {
+          const r = rows[i];
+          const box = r.querySelector('[data-role="select-row"]');
+          box.checked = shouldCheck;
+          setSelected(r, box, shouldCheck);
+        }
+      } else {
+        setSelected(row, cb, cb.checked);
+      }
+      lastClickedIndex = idx;
+      refreshBulkBar();
+    });
+    row.insertBefore(cb, row.firstChild);
+  }
+
+  // If `container` lives inside a <table> (e.g. a <tbody>), the bulk bar
+  // must mount above the whole table, not as a sibling of <tbody> --
+  // a <div> isn't a valid direct child of <table>, and browsers that
+  // accept it anyway lay it out squeezed inside the table's column grid
+  // (vertically-stacked, column-width-constrained buttons).
+  function findBarMountPoint() {
+    let node = container;
+    while (node.parentNode && node.parentNode.tagName === 'TABLE') {
+      node = node.parentNode;
+    }
+    return node;
+  }
+
+  let bulkBar = null;
+  function refreshBulkBar() {
+    if (!enableBulk) return;
+    const rows = getRows();
+    const selected = rows.filter(function (r) { return r.querySelector('[data-role="select-row"]').checked; });
+    if (!selected.length) {
+      if (bulkBar) {
+        const stale = bulkBar;
+        stale.classList.remove('bulk-reorder-bar-visible');
+        setTimeout(function () { stale.remove(); }, 150);
+        bulkBar = null;
+      }
+      return;
+    }
+    if (!bulkBar) {
+      bulkBar = document.createElement('div');
+      bulkBar.className = 'bulk-reorder-bar';
+
+      const count = document.createElement('span');
+      count.className = 'bulk-count';
+      bulkBar.appendChild(count);
+
+      const moveGroup = document.createElement('div');
+      moveGroup.className = 'bulk-group';
+      [['toTop', 'top', 'Move to top'], ['up', 'up', 'Move up'], ['down', 'down', 'Move down'], ['toBottom', 'bottom', 'Move to bottom']].forEach(function (t) {
+        const btn = makeIconButton(t[0], t[2]);
+        btn.addEventListener('click', function () { bulkMove(t[1]); });
+        moveGroup.appendChild(btn);
+      });
+      bulkBar.appendChild(moveGroup);
+
+      const utilGroup = document.createElement('div');
+      utilGroup.className = 'bulk-group';
+      const selectAllBtn = makeIconButton('selectAll', 'Select all');
+      selectAllBtn.addEventListener('click', function () {
+        getRows().forEach(function (r) {
+          const box = r.querySelector('[data-role="select-row"]');
+          box.checked = true;
+          setSelected(r, box, true);
+        });
+        refreshBulkBar();
+      });
+      utilGroup.appendChild(selectAllBtn);
+
+      if (onRemove) {
+        const removeBtn = makeIconButton('trash', 'Remove selected', 'btn-danger');
+        removeBtn.addEventListener('click', function () {
+          const toRemove = getRows().filter(function (r) { return r.querySelector('[data-role="select-row"]').checked; });
+          if (!toRemove.length) return;
+          if (!confirm('Remove ' + toRemove.length + ' selected item(s)?')) return;
+          onRemove(toRemove);
+          refreshBulkBar();
+        });
+        utilGroup.appendChild(removeBtn);
+      }
+      bulkBar.appendChild(utilGroup);
+
+      const clear = makeIconButton('clear', 'Clear selection', 'bulk-clear');
+      clear.addEventListener('click', function () {
+        rows.forEach(function (r) {
+          const box = r.querySelector('[data-role="select-row"]');
+          box.checked = false;
+          setSelected(r, box, false);
+        });
+        lastClickedIndex = null;
+        refreshBulkBar();
+      });
+      bulkBar.appendChild(clear);
+
+      const mountPoint = findBarMountPoint();
+      mountPoint.parentNode.insertBefore(bulkBar, mountPoint);
+      // Trigger the CSS transition on the next frame rather than at
+      // insertion time, so it actually animates in instead of snapping.
+      requestAnimationFrame(function () { bulkBar.classList.add('bulk-reorder-bar-visible'); });
+    }
+    bulkBar.querySelector('.bulk-count').textContent = selected.length + ' selected';
+  }
+
+  function bulkMove(direction) {
+    const rows = getRows();
+    const selected = rows.filter(function (r) { return r.querySelector('[data-role="select-row"]').checked; });
+    if (!selected.length) return;
+    const rest = rows.filter(function (r) { return selected.indexOf(r) === -1; });
+    let newOrder;
+    if (direction === 'top') {
+      newOrder = selected.concat(rest);
+    } else if (direction === 'bottom') {
+      newOrder = rest.concat(selected);
+    } else if (direction === 'up') {
+      newOrder = rows.slice();
+      for (let i = 1; i < newOrder.length; i++) {
+        if (selected.indexOf(newOrder[i]) !== -1 && selected.indexOf(newOrder[i - 1]) === -1) {
+          const tmp = newOrder[i - 1]; newOrder[i - 1] = newOrder[i]; newOrder[i] = tmp;
+        }
+      }
+    } else {
+      newOrder = rows.slice();
+      for (let i = newOrder.length - 2; i >= 0; i--) {
+        if (selected.indexOf(newOrder[i]) !== -1 && selected.indexOf(newOrder[i + 1]) === -1) {
+          const tmp = newOrder[i + 1]; newOrder[i + 1] = newOrder[i]; newOrder[i] = tmp;
+        }
+      }
+    }
+    newOrder.forEach(function (r) { container.appendChild(r); });
+    refreshBulkBar();
+    onReorder(newOrder);
+  }
+
+  let sortable = null;
+  function ensureSortable() {
+    if (sortable) return;
+    const sortableOpts = {
+      handle: '[data-role="drag-handle"]',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      selectedClass: 'sortable-selected',
+      onEnd: function () {
+        refreshBulkBar();
+        onReorder(getRows());
+      },
+    };
+    if (enableBulk && window.Sortable && window.Sortable.MultiDrag) {
+      sortableOpts.multiDrag = true;
+    }
+    sortable = Sortable.create(container, sortableOpts);
+  }
+
+  function refresh() {
+    getRows().forEach(function (row) {
+      ensureHandle(row);
+      ensureCheckbox(row);
+    });
+    ensureSortable();
+    refreshBulkBar();
+  }
+
+  refresh();
+  return {refresh: refresh};
+}
+</script>
+
+{% block content %}{% endblock %}
+</body>
+</html>

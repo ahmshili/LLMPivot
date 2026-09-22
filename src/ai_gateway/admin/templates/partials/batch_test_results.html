@@ -1,0 +1,19 @@
+{% set ns = namespace(pass_count=0) %}
+{% for r in results %}{% if r.outcome.success %}{% set ns.pass_count = ns.pass_count + 1 %}{% endif %}{% endfor %}
+<p><strong>{{ ns.pass_count }} / {{ results|length }}</strong> accounts passed{% if results and results[0].model %} (tested against <code>{{ results[0].model }}</code>){% endif %}.</p>
+<table>
+  <tr><th>Username</th><th>Result</th><th>Message</th></tr>
+  {% for r in results %}
+  <tr>
+    <td>{{ r.username }}</td>
+    <td>
+      {% if r.outcome.success %}
+      <span class="badge badge-ok">OK</span>
+      {% else %}
+      <span class="badge badge-fail">{{ r.outcome.label }}{% if r.outcome.status_code %} ({{ r.outcome.status_code }}){% endif %}</span>
+      {% endif %}
+    </td>
+    <td>{% if not r.outcome.success %}{{ r.outcome.message }}{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>

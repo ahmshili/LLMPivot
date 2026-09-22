@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Providers - AI Gateway Admin{% endblock %}
+{% block content %}
+<h1>Providers</h1>
+<table>
+  <tr><th>Provider</th><th>LiteLLM prefix</th><th>Accounts</th><th>Priority models</th></tr>
+  {% for p in providers %}
+  <tr>
+    <td>
+      <a href="/admin/providers/{{ p.name }}">{{ p.name }}</a>
+      {% if p.comment %}<span class="comment-icon" title="{{ p.comment }}">&#128172;</span>{% endif %}
+    </td>
+    <td><code>{{ p.litellm_prefix }}</code></td>
+    <td>{{ p.account_count }}</td>
+    <td>{{ p.model_count }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">No providers configured yet.</td></tr>
+  {% endfor %}
+</table>
+<p><a class="btn" href="/admin/providers/new">+ Add provider</a></p>
+{% endblock %}

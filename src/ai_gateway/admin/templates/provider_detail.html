@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+{% block title %}{{ provider_name }} - AI Gateway Admin{% endblock %}
+{% block content %}
+<h1>{{ provider_name }}</h1>
+<p><a href="/admin/providers">&larr; All providers</a></p>
+
+{% if errors %}
+<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h2>Settings</h2>
+<form method="post" action="/admin/providers/{{ provider_name }}">
+  <label for="litellm_prefix">LiteLLM prefix</label>
+  <input id="litellm_prefix" name="litellm_prefix" type="text" value="{{ values.litellm_prefix }}">
+
+  <label for="comment">Comment</label>
+  <textarea id="comment" name="comment" style="min-height:3rem;">{{ values.comment }}</textarea>
+
+  <div class="actions"><button type="submit">Save settings</button></div>
+</form>
+
+<form method="post" action="/admin/providers/{{ provider_name }}/delete" onsubmit="return confirm('Delete provider {{ provider_name }} and all its accounts? This cannot be undone from the UI (a backup file is kept).');">
+  <button type="submit" class="btn-danger">Delete provider</button>
+</form>
+
+<h2>Models</h2>
+<div class="add-model-row">
+  <input list="live-models-datalist" id="new-model-input" name="model" type="text" placeholder="Type or pick a model, e.g. gemini-2.5-flash or gemini-2.5-*">
+  <datalist id="live-models-datalist">
+    {% for m in live_models %}<option value="{{ m }}">{% endfor %}
+  </datalist>
+  <button type="button" id="add-model-btn">+ Add to priority list</button>
+  {% if accounts %}
+  <form class="inline" hx-post="/admin/providers/{{ provider_name }}/accounts/{{ accounts[0].key }}/test"
+        hx-target="#new-model-test-result" hx-swap="innerHTML" hx-include="#new-model-input">
+    <select id="new-model-test-account" onchange="this.closest('form').setAttribute('hx-post', this.value);">
+      {% for a in accounts %}
+      <option value="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/test">{{ a.username }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" title="Test the model above against the selected account, without saving it to the priority list first">Test</button>
+  </form>
+  <span id="new-model-test-result"></span>
+  {% endif %}
+</div>
+
+<table class="models-table">
+  <thead><tr>
+    <th style="width:1.5rem;"></th>
+    <th style="width:1.5rem;"></th>
+    <th style="width:2.5rem;"></th>
+    <th>Model / pattern</th>
+    <th style="width:2rem;"></th>
+    <th>Comment</th>
+    <th>Test</th>
+    <th></th>
+    <th></th>
+  </tr></thead>
+  <tbody id="models-tbody"></tbody>
+</table>
+<p class="hint">Order is priority order (top tried first). Wildcards like <code>gemini-2.5-*</code> are supported.</p>
+
+<h3>Standard models</h3>
+<p class="hint">
+  A saved pool of models kept for quick-selection/fallback -- not part of
+  active routing priority. A model can only be in one list at a time;
+  moving it to priority removes it from here, and vice versa.
+</p>
+<table class="models-table">
+  <thead><tr>
+    <th style="width:1.5rem;"></th>
+    <th style="width:1.5rem;"></th>
+    <th style="width:2.5rem;"></th>
+    <th>Model / pattern</th>
+    <th>Comment</th>
+    <th>Test</th>
+    <th></th>
+    <th></th>
+  </tr></thead>
+  <tbody id="standard-models-tbody"></tbody>
+</table>
+
+<form method="post" action="/admin/providers/{{ provider_name }}/models" id="models-form">
+  <input type="hidden" name="models_json" id="models-json-input">
+  <input type="hidden" name="standard_models_json" id="standard-models-json-input">
+
+  <label for="exclude_models">Exclude patterns (one per line; removes matches even from an explicit name or a wildcard)</label>
+  <textarea id="exclude_models" name="exclude_models">{{ values.exclude_models_text }}</textarea>
+
+  <div class="actions"><button type="submit">Save models</button></div>
+</form>
+
+<details>
+  <summary>Live models available from this provider ({{ live_models|length }})</summary>
+  {% if live_models %}
+  <ul>{% for m in live_models %}<li><code>{{ m }}</code></li>{% endfor %}</ul>
+  {% else %}
+  <p class="hint">
+    None reported. Two likely causes: (1) your LiteLLM config.yaml has no
+    <code>{{ values.litellm_prefix }}*</code> deployment registered for
+    this provider yet -- adding a provider here only affects this
+    gateway's config, never LiteLLM's, which is a separate file you
+    maintain yourself; or (2) this provider isn't on LiteLLM's supported
+    list for dynamically expanding a wildcard into real model names (true
+    for some providers, e.g. Groq/OpenRouter), in which case you'll need
+    to type exact model names by hand instead of relying on this list.
+  </p>
+  <p class="hint">
+    Whatever you type here must not include this provider's LiteLLM
+    prefix -- write <code>codestral-latest</code>, not
+    <code>{{ values.litellm_prefix }}codestral-latest</code>; the prefix
+    is added automatically.
+  </p>
+  {% endif %}
+</details>
+
+<details>
+  <summary>Models excluded by your exclude patterns ({{ excluded_live_models|length }})</summary>
+  {% if excluded_live_models %}
+  <ul>{% for m in excluded_live_models %}<li><code>{{ m }}</code></li>{% endfor %}</ul>
+  {% else %}
+  <p class="hint">Nothing currently excluded -- either no patterns are set, or none of them match a live model.</p>
+  {% endif %}
+</details>
+
+<h2>Accounts</h2>
+<div class="actions">
+  <button type="button" id="test-all-btn"
+          hx-post="/admin/providers/{{ provider_name }}/accounts/test-all"
+          hx-target="#test-all-results" hx-swap="innerHTML"
+          hx-indicator="#test-all-spinner">
+    Test all accounts
+  </button>
+  <span id="test-all-spinner" class="htmx-indicator hint">Testing (this may take a while for many accounts)&hellip;</span>
+  <button type="button" id="toggle-api-keys-btn">Show API keys</button>
+</div>
+<div id="test-all-results"></div>
+
+<p class="hint">Drag the &#10531; handle to reorder, or check multiple accounts to move them together. Reordering saves immediately.</p>
+<datalist id="test-model-options-datalist">
+  {% for m in test_model_options %}<option value="{{ m }}">{% endfor %}
+</datalist>
+<table id="accounts-table">
+  <thead><tr>
+    <th style="width:1.5rem;"></th>
+    <th style="width:1.5rem;"></th>
+    <th class="col-username">Username</th>
+    <th class="apikey-col col-sensitive" style="display:none;">API key</th>
+    <th class="col-envvar col-sensitive" style="display:none;">Env var</th>
+    <th class="col-status">Status</th>
+    <th>Test</th>
+    <th>Order</th>
+    <th></th>
+  </tr></thead>
+  <tbody id="accounts-tbody">
+  {% for a in accounts %}
+  <tr data-account-key="{{ a.key }}">
+    <td class="col-username">
+      {{ a.username }}
+      {% if a.comment %}<span class="comment-icon" title="{{ a.comment }}">&#128172;</span>{% endif %}
+    </td>
+    <td class="apikey-col col-sensitive" style="display:none;"><code>{{ a.api_key or '(not loaded)' }}</code></td>
+    <td class="col-envvar col-sensitive" style="display:none;"><code>{{ a.env_var }}</code></td>
+    <td class="col-status"><span id="account-status-{{ a.key }}" class="badge {{ a.badge_class }}">{{ a.state_label }}</span></td>
+    <td>
+      <form class="inline" hx-post="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/test"
+            hx-target="#test-result-{{ a.key }}" hx-swap="innerHTML">
+        <input type="text" name="model" list="test-model-options-datalist"
+               placeholder="Type or pick a model" value="{{ test_model_options[0] if test_model_options else '' }}">
+        <button type="submit">Test</button>
+      </form>
+      <span id="test-result-{{ a.key }}"></span>
+    </td>
+    <td>
+      <form class="inline" method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/move">
+        <input type="hidden" name="direction" value="top"><button type="submit" class="icon-btn" title="Move to top" {% if loop.first %}disabled{% endif %}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="4" x2="20" y2="4"></line><polyline points="8 14 12 10 16 14"></polyline><line x1="12" y1="10" x2="12" y2="20"></line></svg></button>
+      </form>
+      <form class="inline" method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/move">
+        <input type="hidden" name="direction" value="up"><button type="submit" class="icon-btn" title="Move up" {% if loop.first %}disabled{% endif %}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+      </form>
+      <form class="inline" method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/move">
+        <input type="hidden" name="direction" value="down"><button type="submit" class="icon-btn" title="Move down" {% if loop.last %}disabled{% endif %}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+      </form>
+      <form class="inline" method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/move">
+        <input type="hidden" name="direction" value="bottom"><button type="submit" class="icon-btn" title="Move to bottom" {% if loop.last %}disabled{% endif %}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"></line><polyline points="16 10 12 14 8 10"></polyline><line x1="12" y1="14" x2="12" y2="4"></line></svg></button>
+      </form>
+    </td>
+    <td>
+      <a href="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/edit">Edit</a>
+      &nbsp;
+      <form class="inline" method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/delete" onsubmit="return confirm('Delete account {{ a.username }}? This also permanently removes its API key from your .env file.');">
+        <button type="submit" class="btn-danger">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7">No accounts yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h3>Add account</h3>
+<form method="post" action="/admin/providers/{{ provider_name }}/accounts">
+  <label for="username">Username</label>
+  <input id="username" name="username" type="text" placeholder="e.g. one.anon.201@gmail.com or 'backup'" required>
+  <p class="hint">This is the only identity you'll see for this account -- kept exactly as typed, editable anytime.</p>
+
+  <label for="label">Label / account key (optional)</label>
+  <input id="label" name="label" type="text" placeholder="leave blank to auto-generate from username (domain dropped)">
+  <p class="hint">Overrides the internal key normally derived from the username (e.g. 'personal' instead of the auto-generated 'one_anon_201'). Purely cosmetic in config.yaml -- doesn't affect routing.</p>
+
+  <label for="api_key">API key</label>
+  <input id="api_key" name="api_key" type="text" autocomplete="off" required>
+
+  <label for="env_var_override">Environment variable name (optional)</label>
+  <input id="env_var_override" name="env_var_override" type="text" placeholder="leave blank to auto-generate">
+
+  <label for="add-comment">Comment (optional)</label>
+  <textarea id="add-comment" name="comment" style="min-height:2.5rem;"></textarea>
+
+  <div class="actions"><button type="submit">Add account</button></div>
+</form>
+
+<script>
+document.getElementById('toggle-api-keys-btn').addEventListener('click', function () {
+  const cells = document.querySelectorAll('.col-sensitive');
+  const nowHidden = cells[0] && cells[0].style.display === 'none';
+  cells.forEach(function (el) { el.style.display = nowHidden ? 'table-cell' : 'none'; });
+  this.textContent = nowHidden ? 'Hide API keys' : 'Show API keys';
+});
+</script>
+
+<script>
+// Drag/bulk-move persists immediately (one POST per action, carrying the
+// full new key order) rather than staging behind a form submit -- this
+// matches the existing single-row move buttons on this same table, which
+// already persist per click via /accounts/{key}/move.
+makeReorderable(
+  document.getElementById('accounts-tbody'),
+  function () {
+    return Array.from(document.getElementById('accounts-tbody').querySelectorAll('tr[data-account-key]'));
+  },
+  function (orderedRows) {
+    const order = orderedRows.map(function (tr) { return tr.dataset.accountKey; });
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = '/admin/providers/{{ provider_name }}/accounts/reorder';
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'order';
+    input.value = JSON.stringify(order);
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+  },
+  {
+    bulk: true,
+    onRemove: function (selectedRows) {
+      const keys = selectedRows.map(function (tr) { return tr.dataset.accountKey; });
+      const form = document.createElement('form');
+      form.method = 'post';
+      form.action = '/admin/providers/{{ provider_name }}/accounts/delete-bulk';
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'keys';
+      input.value = JSON.stringify(keys);
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+    },
+  }
+);
+</script>
+
+
+<script>
+const providerAccounts = {{ accounts_json|safe }};
+
+// Shared by both the priority and standard model tables -- the only real
+// differences between them are: priority shows the enable/disable toggle
+// and moves entries TO standard; standard has no toggle (an entry there
+// is already inherently inactive) and moves entries TO priority. Test
+// button/account-select is identical in both, reusing the same
+// /accounts/{key}/test route and partials/test_result.html fragment the
+// account rows above already use, just via plain fetch() instead of
+// htmx, since these rows are built dynamically and htmx doesn't process
+// hx-* attributes on content it didn't render itself.
+function createModelsTableController(tbodyId, initialList, opts) {
+  let list = initialList.slice();
+  let controller;
+
+  function render() {
+    const tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = '';
+    list.forEach(function (entry, i) {
+      const tr = document.createElement('tr');
+      tr.dataset.pattern = entry.pattern;
+
+      const orderTd = document.createElement('td');
+      const upBtn = makeIconButton('up', 'Move up');
+      upBtn.disabled = (i === 0);
+      upBtn.addEventListener('click', function () {
+        [list[i - 1], list[i]] = [list[i], list[i - 1]];
+        controller.render();
+      });
+      const downBtn = makeIconButton('down', 'Move down');
+      downBtn.disabled = (i === list.length - 1);
+      downBtn.addEventListener('click', function () {
+        [list[i + 1], list[i]] = [list[i], list[i + 1]];
+        controller.render();
+      });
+      orderTd.appendChild(upBtn); orderTd.appendChild(downBtn);
+
+      const patternTd = document.createElement('td');
+      patternTd.innerHTML = '<code></code>';
+      patternTd.querySelector('code').textContent = entry.pattern;
+
+      let toggleTd = null;
+      if (opts.showToggle) {
+        toggleTd = document.createElement('td');
+        const toggleBtn = makeIconButton('power', entry.enabled === false ? 'Disabled -- click to enable' : 'Enabled -- click to disable, keeping it for reference', 'model-toggle-btn');
+        toggleBtn.classList.toggle('toggle-off', entry.enabled === false);
+        toggleBtn.addEventListener('click', function () {
+          entry.enabled = entry.enabled === false;
+          controller.render();
+        });
+        toggleTd.appendChild(toggleBtn);
+      }
+
+      const commentTd = document.createElement('td');
+      const commentInput = document.createElement('input');
+      commentInput.type = 'text';
+      commentInput.value = entry.comment || '';
+      commentInput.placeholder = 'optional comment';
+      commentInput.addEventListener('input', function () { entry.comment = commentInput.value; });
+      commentTd.appendChild(commentInput);
+
+      const testTd = document.createElement('td');
+      if (providerAccounts.length) {
+        const select = document.createElement('select');
+        providerAccounts.forEach(function (a) {
+          const option = document.createElement('option');
+          option.value = a.key;
+          option.textContent = a.username;
+          select.appendChild(option);
+        });
+        const testBtn = document.createElement('button');
+        testBtn.type = 'button';
+        testBtn.textContent = 'Test';
+        testBtn.title = 'Test this model against the selected account';
+        const resultSpan = document.createElement('span');
+        testBtn.addEventListener('click', function () {
+          resultSpan.textContent = 'Testing\u2026';
+          fetch('/admin/providers/{{ provider_name }}/accounts/' + encodeURIComponent(select.value) + '/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'model=' + encodeURIComponent(entry.pattern),
+          })
+            .then(function (r) { return r.text(); })
+            .then(function (html) { resultSpan.innerHTML = html; })
+            .catch(function () { resultSpan.textContent = 'Request failed.'; });
+        });
+        testTd.appendChild(select);
+        testTd.appendChild(testBtn);
+        testTd.appendChild(resultSpan);
+      }
+
+      let moveTd = null;
+      if (opts.onMove) {
+        moveTd = document.createElement('td');
+        const moveBtn = document.createElement('button');
+        moveBtn.type = 'button';
+        moveBtn.textContent = opts.moveLabel;
+        moveBtn.addEventListener('click', function () {
+          list.splice(i, 1);
+          controller.render();
+          controller.reorderable.refresh();
+          opts.onMove(entry);
+        });
+        moveTd.appendChild(moveBtn);
+      }
+
+      const removeTd = document.createElement('td');
+      const removeBtn = makeIconButton('trash', 'Remove', 'btn-danger');
+      removeBtn.addEventListener('click', function () {
+        list.splice(i, 1);
+        controller.render();
+        controller.reorderable.refresh();
+      });
+      removeTd.appendChild(removeBtn);
+
+      if (entry.enabled === false) { tr.classList.add('model-disabled'); }
+      tr.appendChild(orderTd);
+      tr.appendChild(patternTd);
+      if (toggleTd) tr.appendChild(toggleTd);
+      tr.appendChild(commentTd);
+      tr.appendChild(testTd);
+      if (moveTd) tr.appendChild(moveTd);
+      tr.appendChild(removeTd);
+      tbody.appendChild(tr);
+    });
+  }
+
+  const reorderable = makeReorderable(
+    document.getElementById(tbodyId),
+    function () { return Array.from(document.getElementById(tbodyId).querySelectorAll('tr')); },
+    function (orderedRows) {
+      const byPattern = {};
+      list.forEach(function (e) { byPattern[e.pattern] = e; });
+      list = orderedRows.map(function (tr) { return byPattern[tr.dataset.pattern]; });
+      controller.render();
+    },
+    {
+      onRemove: function (selectedRows) {
+        const patterns = selectedRows.map(function (tr) { return tr.dataset.pattern; });
+        list = list.filter(function (e) { return patterns.indexOf(e.pattern) === -1; });
+        controller.render();
+      },
+    }
+  );
+
+  controller = {
+    render: render,
+    reorderable: reorderable,
+    getList: function () { return list; },
+    setList: function (newList) { list = newList; render(); reorderable.refresh(); },
+    addEntry: function (entry) {
+      if (list.some(function (e) { return e.pattern === entry.pattern; })) return;
+      list.push(entry);
+      render();
+      reorderable.refresh();
+    },
+  };
+  render();
+  return controller;
+}
+
+const priorityModels = createModelsTableController('models-tbody', {{ models_json|safe }}, {
+  showToggle: true,
+  moveLabel: 'Move to standard',
+  onMove: function (entry) { standardModels.addEntry(entry); },
+});
+
+const standardModels = createModelsTableController('standard-models-tbody', {{ standard_models_json|safe }}, {
+  showToggle: false,
+  moveLabel: 'Move to priority',
+  onMove: function (entry) { priorityModels.addEntry(entry); },
+});
+
+document.getElementById('add-model-btn').addEventListener('click', function () {
+  const input = document.getElementById('new-model-input');
+  const value = input.value.trim();
+  if (!value) return;
+  priorityModels.addEntry({pattern: value, comment: null});
+  input.value = '';
+});
+
+document.getElementById('models-form').addEventListener('submit', function () {
+  document.getElementById('models-json-input').value = JSON.stringify(priorityModels.getList());
+  document.getElementById('standard-models-json-input').value = JSON.stringify(standardModels.getList());
+});
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Edit account - AI Gateway Admin{% endblock %}
+{% block content %}
+<h1>Edit account</h1>
+<p><a href="/admin/providers/{{ provider_name }}">&larr; {{ provider_name }}</a></p>
+
+{% if errors %}
+<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h2>Username &amp; comment</h2>
+<form method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ account_name }}/edit">
+  <label for="username">Username</label>
+  <input id="username" name="username" type="text" value="{{ values.username }}" required>
+
+  <label for="comment">Comment</label>
+  <textarea id="comment" name="comment" style="min-height:3rem;">{{ values.comment }}</textarea>
+
+  <div class="actions"><button type="submit">Save</button></div>
+</form>
+
+<h2>Label / account key</h2>
+<form method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ account_name }}/rename-key">
+  <label for="new_key">Account key</label>
+  <input id="new_key" name="new_key" type="text" value="{{ account_name }}" required>
+  <p class="hint">The internal key used in config.yaml and this page's URL -- separate from username. Renaming updates any endpoint that explicitly references this account.</p>
+  <div class="actions"><button type="submit">Rename</button></div>
+</form>
+
+<h2>Rotate API key</h2>
+<form method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ account_name }}/rotate-key">
+  <label for="api_key">API key</label>
+  <input id="api_key" name="api_key" type="text" autocomplete="off" value="{{ current_api_key }}">
+  <p class="hint">Current value of <code>{{ env_var }}</code> in your .env file, shown in plain text. Edit and save to rotate it; takes effect immediately, no restart needed.</p>
+  <div class="actions"><button type="submit">Rotate key</button></div>
+</form>
+
+<h2>Rename environment variable</h2>
+<form method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ account_name }}/rename-env-var">
+  <label for="new_env_var">New environment variable name</label>
+  <input id="new_env_var" name="new_env_var" type="text" value="{{ env_var }}" required>
+  <p class="hint">The current secret value is copied to the new variable name automatically. The old line is left in your .env file, unused.</p>
+  <div class="actions"><button type="submit">Rename</button></div>
+</form>
+
+<h2>Delete</h2>
+<form method="post" action="/admin/providers/{{ provider_name }}/accounts/{{ account_name }}/delete" onsubmit="return confirm('Delete this account? This also permanently removes its API key from your .env file.');">
+  <button type="submit" class="btn-danger">Delete account</button>
+</form>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% if outcome.success %}
+<span class="badge badge-ok">OK</span>
+{% else %}
+<span class="badge badge-fail">{{ outcome.label }}{% if outcome.status_code %} ({{ outcome.status_code }}){% endif %}</span>
+<div class="status-msg fail">{{ outcome.message }}</div>
+{% endif %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Add provider - AI Gateway Admin{% endblock %}
+{% block content %}
+<h1>Add provider</h1>
+
+{% if errors %}
+<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+{% endif %}
+
+<form method="post" action="/admin/providers">
+  <label for="name">Provider name</label>
+  <input list="curated-providers" id="name" name="name" type="text" value="{{ values.name or '' }}" placeholder="e.g. groq" required>
+  <datalist id="curated-providers">
+    {% for cp in curated_providers %}
+    <option value="{{ cp.name }}">{% endfor %}
+  </datalist>
+  <p class="hint">Pick a suggestion or type any name -- this list isn't exhaustive.</p>
+
+  <label for="litellm_prefix">LiteLLM prefix</label>
+  <input id="litellm_prefix" name="litellm_prefix" type="text" value="{{ values.litellm_prefix or '' }}" placeholder="defaults to '{name}/' if left blank">
+
+  <label for="comment">Comment (optional)</label>
+  <textarea id="comment" name="comment" style="min-height:3rem;">{{ values.comment or '' }}</textarea>
+
+  <div class="actions">
+    <button type="submit">Create provider</button>
+    <a class="btn" href="/admin/providers">Cancel</a>
+  </div>
+</form>
+
+<script>
+document.getElementById('name').addEventListener('input', function () {
+  var prefixField = document.getElementById('litellm_prefix');
+  if (!prefixField.dataset.touched) {
+    prefixField.value = this.value ? this.value + '/' : '';
+  }
+});
+document.getElementById('litellm_prefix').addEventListener('input', function () {
+  this.dataset.touched = '1';
+});
+</script>
+{% endblock %}
