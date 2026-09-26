@@ -4,6 +4,11 @@ against the same GatewayConfig model ConfigManager uses at startup and
 backed up before it touches disk.
 
 Unauthenticated by design -- see ai_gateway.admin package docstring.
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations
@@ -42,12 +47,34 @@ from ai_gateway.config.models import (
     ProviderDefaults,
 )
 from ai_gateway.cooldown import AccountState
+from ai_gateway.notice import (
+    AUTHOR_EMAIL,
+    AUTHOR_NAME,
+    GITHUB_URL,
+    GITLAB_URL,
+    ISSUES_URL,
+    LICENSE_URL,
+    PROJECT_NAME,
+)
 from ai_gateway.reload import reload_candidates
 
 logger = logging.getLogger("ai_gateway.admin.routes")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+# Exposed as Jinja globals (not hardcoded in the template) so the footer
+# in base.html always reflects ai_gateway.notice, the single source of
+# truth for author/contact/repo info. See LICENSE and notice.py: this
+# attribution must be preserved in any deployment or fork-for-PR.
+templates.env.globals.update(
+    project_name=PROJECT_NAME,
+    author_name=AUTHOR_NAME,
+    author_email=AUTHOR_EMAIL,
+    github_url=GITHUB_URL,
+    gitlab_url=GITLAB_URL,
+    issues_url=ISSUES_URL,
+    license_url=LICENSE_URL,
+)
 
 
 def render(request: Request, name: str, context: dict | None = None, status_code: int = 200) -> HTMLResponse:

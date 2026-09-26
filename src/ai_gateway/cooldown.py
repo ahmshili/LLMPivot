@@ -10,6 +10,11 @@ No scoring, no probabilistic routing, no ML -- just three states:
 State lives entirely in process memory (no Redis, no SQL), which means it
 resets on restart. That's an accepted tradeoff: a restart briefly re-enables
 a genuinely dead account until it fails once more.
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations

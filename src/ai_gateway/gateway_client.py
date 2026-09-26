@@ -8,6 +8,11 @@ should need to change.
 Per-request credential injection is used deliberately: LiteLLM's own
 config never lists individual accounts, so there is exactly one source of
 truth for accounts (this gateway's YAML config), never two.
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations

@@ -13,6 +13,11 @@ reads (AI_GATEWAY_DATA_DIR, AI_GATEWAY_CONFIG, AI_GATEWAY_ENV_FILE,
 AI_GATEWAY_LOG_LEVEL, AI_GATEWAY_PROD_MODE, AI_GATEWAY_ENABLE_ADMIN) --
 this file adds no new configuration surface of its own, just a
 friendlier way to set the existing one.
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations

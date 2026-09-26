@@ -11,6 +11,11 @@ ConfigManager does NOT talk to LiteLLM and does NOT build candidates -- that
 is ``CandidateResolver``'s job. Keeping this split means CandidateResolver
 can be re-run on ``/internal/reload`` without re-reading the file if ever
 needed, and can be unit-tested without any YAML at all.
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations

@@ -4,6 +4,11 @@ Because candidates are fully resolved ahead of time by CandidateResolver,
 the router itself contains no knowledge of providers, models, or accounts
 as separate concepts -- it only knows how to walk a list, skip
 unavailable entries, and stop.
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations
