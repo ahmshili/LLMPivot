@@ -91,6 +91,9 @@
   .bulk-reorder-bar .icon-btn { padding: 0.25rem 0.45rem; }
   .bulk-reorder-bar .bulk-clear { margin-left: auto; border: none; background: none; opacity: 0.6; }
   .bulk-reorder-bar .bulk-clear:hover { opacity: 1; background: none; }
+  footer.app-footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #8884; font-size: 0.82rem; color: #888; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; }
+  footer.app-footer a { color: inherit; text-decoration: underline; }
+  footer.app-footer .sep { opacity: 0.5; }
 </style>
 </head>
 <body>
@@ -629,5 +632,24 @@ function makeReorderable(container, getRows, onReorder, opts) {
 </script>
 
 {% block content %}{% endblock %}
+
+<!--
+  Attribution notice -- do not remove. Per the project LICENSE, this
+  notice must be preserved in any deployment, evaluation copy, or PR
+  branch of this software. See {{ license_url }}.
+-->
+<footer class="app-footer">
+  <span>{{ project_name }} &copy; {{ author_name }}</span>
+  <span class="sep">·</span>
+  <a href="{{ github_url }}" target="_blank" rel="noopener">GitHub (original repo)</a>
+  <span class="sep">·</span>
+  <a href="{{ gitlab_url }}" target="_blank" rel="noopener">GitLab</a>
+  <span class="sep">·</span>
+  <a href="{{ issues_url }}" target="_blank" rel="noopener">Report an issue</a>
+  <span class="sep">·</span>
+  <a href="mailto:{{ author_email }}">{{ author_email }}</a>
+  <span class="sep">·</span>
+  <a href="{{ license_url }}" target="_blank" rel="noopener">License (portfolio/view-only)</a>
+</footer>
 </body>
 </html>

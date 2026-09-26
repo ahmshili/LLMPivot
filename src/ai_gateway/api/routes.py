@@ -7,6 +7,11 @@ Only the endpoints explicitly in scope are implemented:
                             implemented as a thin FastAPI route rather than
                             a GatewayClient method)
     POST /internal/reload (config hot-reload without restart)
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations

@@ -17,6 +17,11 @@ can live outside the project checkout entirely, e.g. a sibling folder
 shared with your LiteLLM deployment). Either AI_GATEWAY_CONFIG or
 AI_GATEWAY_ENV_FILE, if explicitly set, always wins over the data-dir
 default.
+PivotLLM -- https://github.com/ahmshili/LLMPivot -- Copyright (c) ahmshili.
+Portfolio project, source-available license (see LICENSE at repo root):
+view/evaluate only, no redistribution, no forks outside PRs to the
+original repo, no production/commercial use without permission. This
+notice must be preserved. Contact: a.shili.pers@gmail.com
 """
 
 from __future__ import annotations
@@ -26,7 +31,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 
 from ai_gateway.admin.config_writer import ConfigWriter
 from ai_gateway.admin.routes import router as admin_router
@@ -37,6 +42,15 @@ from ai_gateway.cooldown import CooldownManager
 from ai_gateway.failure import FailureClassifier
 from ai_gateway.gateway_client import GatewayClient
 from ai_gateway.logging_config import configure_logging
+from ai_gateway.notice import (
+    AUTHOR_EMAIL,
+    GITHUB_URL,
+    GITLAB_URL,
+    HTTP_HEADER_NAME,
+    HTTP_HEADER_VALUE,
+    ISSUES_URL,
+    PROJECT_NAME,
+)
 from ai_gateway.router import Router
 from ai_gateway.security import require_admin_auth
 
@@ -203,11 +217,37 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="LLMPivot",
-    description="A lightweight OpenAI-compatible gateway that orchestrates free-tier LLM APIs on top of LiteLLM.",
+    title=f"{PROJECT_NAME} (formerly LLMPivot)",
+    description=(
+        "A lightweight OpenAI-compatible gateway that orchestrates free-tier LLM "
+        "APIs on top of LiteLLM.\n\n"
+        f"Author: {PROJECT_NAME.lower()} devs (contact: {AUTHOR_EMAIL}) · "
+        f"Source: {GITHUB_URL} · Mirror: {GITLAB_URL} · Issues: {ISSUES_URL}\n\n"
+        "Portfolio project distributed under a source-available, "
+        "view-and-evaluate license -- not open source. Redistribution, "
+        "forking outside pull requests to the original repository, and "
+        "production/commercial deployment are not permitted without the "
+        "author's written consent. See the LICENSE file in the repository "
+        "above for full terms."
+    ),
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def _attribution_header(request: Request, call_next):
+    """Stamps every response with the project's canonical source location.
+
+    This is attribution, not access control -- it never blocks or alters a
+    response, it only labels it. See NOTICE / LICENSE for why this header
+    (and its source in notice.py) must be preserved.
+    """
+    response = await call_next(request)
+    response.headers[HTTP_HEADER_NAME] = HTTP_HEADER_VALUE
+    return response
+
+
 # api_router's auth is applied per-route (see api/routes.py), not here at
 # the whole-router level -- /health must stay reachable unauthenticated
 # for PaaS health checks even when prod mode is on, so a single uniform

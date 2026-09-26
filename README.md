@@ -28,7 +28,7 @@ provider, model, or account fails or runs out of quota, PivotLLM
 automatically retries the next one in line — no dropped requests, no
 manual account juggling.
 
-## For recruiters & non-technical reviewers
+## Introduction
 
 **The problem:** most free-tier AI APIs cap how many requests you can
 make per day. An app or script that relies on one provider simply stops
@@ -179,7 +179,7 @@ in [`docs/configuration.md`](docs/configuration.md).
 ## A look at the admin dashboard
 
 <p align="center">
-  <img src="images/2026-09-23-06-29-24.png" alt="PivotLLM admin dashboard" width="85%">
+  <img src="images/2026-09-23-06-12-54.png" alt="PivotLLM admin dashboard" width="85%">
 </p>
 
 <p align="center">
