@@ -1,4 +1,4 @@
-"""AI Gateway: a lightweight OpenAI-compatible gateway that orchestrates
+"""LLMPivot: a lightweight OpenAI-compatible gateway that orchestrates
 free-tier LLM APIs on top of LiteLLM.
 """
 

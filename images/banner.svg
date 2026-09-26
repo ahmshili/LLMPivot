@@ -1,0 +1,58 @@
+<svg width="1200" height="260" viewBox="0 0 1200 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d0b14"/>
+      <stop offset="100%" stop-color="#1a1530"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b7bf0"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="chamBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8FE3A0"/>
+      <stop offset="60%" stop-color="#7FD8C4"/>
+      <stop offset="100%" stop-color="#A98BF0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="14%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#8b7bf0" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#8b7bf0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="260" fill="url(#bg)"/>
+  <rect width="1200" height="260" fill="url(#glow)"/>
+
+  <!-- compact chameleon mascot, sitting to the left of the title -->
+  <g transform="translate(38,68)">
+    <!-- tail -->
+    <path d="M 20 118 C -14 118 -24 90 -4 74 C 14 60 32 74 26 90 C 20 102 4 100 8 86"
+          stroke="url(#chamBody)" stroke-width="13" fill="none" stroke-linecap="round"/>
+    <!-- body -->
+    <ellipse cx="64" cy="96" rx="46" ry="36" fill="url(#chamBody)"/>
+    <!-- back ridge -->
+    <g fill="#6FC98A">
+      <path d="M 44 66 q 4 -9 8 0 q -4 4 -8 0"/>
+      <path d="M 58 60 q 4 -10 8 0 q -4 4.5 -8 0"/>
+      <path d="M 73 60 q 4 -10 8 0 q -4 4.5 -8 0"/>
+    </g>
+    <!-- feet -->
+    <ellipse cx="34" cy="128" rx="9" ry="6" fill="#6FC98A"/>
+    <ellipse cx="92" cy="130" rx="9" ry="6" fill="#6FC98A"/>
+    <!-- head -->
+    <circle cx="104" cy="70" r="34" fill="url(#chamBody)"/>
+    <!-- casque -->
+    <path d="M 90 40 Q 104 27 120 40 Q 111 46 97 46 Z" fill="#7FD8A6"/>
+    <!-- eye mound + eye -->
+    <circle cx="112" cy="66" r="17" fill="#79D69F"/>
+    <circle cx="112" cy="66" r="11" fill="#FFFFFF"/>
+    <circle cx="114" cy="68" r="6" fill="#4A3B7A"/>
+    <circle cx="112" cy="65" r="2" fill="#FFFFFF"/>
+    <!-- smile -->
+    <path d="M 108 86 Q 116 92 124 85" stroke="#4A3B7A" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <text x="215" y="122" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="64" font-weight="700" fill="#f4f1fb">LLMPivot</text>
+  <text x="217" y="160" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="21" fill="#a9a0c9">Self-healing OpenAI-compatible gateway for multi-provider LLM APIs</text>
+
+  <rect x="217" y="184" width="640" height="2" fill="url(#accent)" opacity="0.6"/>
+</svg>

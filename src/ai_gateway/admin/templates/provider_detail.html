@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ provider_name }} - AI Gateway Admin{% endblock %}
+{% block title %}{{ provider_name }} - LLMPivot Admin{% endblock %}
 {% block content %}
 <h1>{{ provider_name }}</h1>
 <p><a href="/admin/providers">&larr; All providers</a></p>
@@ -202,12 +202,12 @@
 <h3>Add account</h3>
 <form method="post" action="/admin/providers/{{ provider_name }}/accounts">
   <label for="username">Username</label>
-  <input id="username" name="username" type="text" placeholder="e.g. one.anon.201@gmail.com or 'backup'" required>
+  <input id="username" name="username" type="text" placeholder="e.g. jane.doe@example.com or 'backup'" required>
   <p class="hint">This is the only identity you'll see for this account -- kept exactly as typed, editable anytime.</p>
 
   <label for="label">Label / account key (optional)</label>
   <input id="label" name="label" type="text" placeholder="leave blank to auto-generate from username (domain dropped)">
-  <p class="hint">Overrides the internal key normally derived from the username (e.g. 'personal' instead of the auto-generated 'one_anon_201'). Purely cosmetic in config.yaml -- doesn't affect routing.</p>
+  <p class="hint">Overrides the internal key normally derived from the username (e.g. 'personal' instead of the auto-generated 'jane_doe'). Purely cosmetic in config.yaml -- doesn't affect routing.</p>
 
   <label for="api_key">API key</label>
   <input id="api_key" name="api_key" type="text" autocomplete="off" required>

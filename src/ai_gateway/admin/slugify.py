@@ -10,7 +10,7 @@ import re
 
 
 def slugify_account_label(label: str) -> str:
-    """'one.anon.201@gmail.com' -> 'one_anon_201'.
+    """'jane.doe@example.com' -> 'jane_doe'.
 
     The domain is dropped deliberately: the provider already identifies
     the service, so keeping the domain just makes an already-long env var

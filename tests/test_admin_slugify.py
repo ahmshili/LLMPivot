@@ -4,7 +4,7 @@ from ai_gateway.admin.slugify import slugify_account_label, unique_account_key
 
 
 def test_slugify_strips_domain() -> None:
-    assert slugify_account_label("one.anon.201@gmail.com") == "one_anon_201"
+    assert slugify_account_label("jane.doe@example.com") == "jane_doe"
 
 
 def test_slugify_plain_label() -> None:

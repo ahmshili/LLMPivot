@@ -1,0 +1,85 @@
+<svg width="520" height="520" viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8FE3A0"/>
+      <stop offset="55%" stop-color="#7FD8C4"/>
+      <stop offset="100%" stop-color="#A98BF0"/>
+    </linearGradient>
+    <linearGradient id="bellyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#EFFBF0"/>
+      <stop offset="100%" stop-color="#D9F0E4"/>
+    </linearGradient>
+    <radialGradient id="cheekGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF9EC0" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#FF9EC0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- branch -->
+  <path d="M 20 430 Q 180 400 260 420 Q 360 445 500 410" stroke="#B98A5E" stroke-width="16" fill="none" stroke-linecap="round"/>
+  <path d="M 20 430 Q 180 400 260 420 Q 360 445 500 410" stroke="#C99C70" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- curled tail -->
+  <path d="M 118 392 C 70 392 55 350 85 328 C 112 308 138 328 128 352 C 120 370 96 366 100 348"
+        stroke="url(#bodyGrad)" stroke-width="26" fill="none" stroke-linecap="round"/>
+
+  <!-- back feet gripping branch -->
+  <ellipse cx="150" cy="412" rx="20" ry="13" fill="#6FC98A"/>
+  <ellipse cx="222" cy="424" rx="20" ry="13" fill="#6FC98A"/>
+
+  <!-- body -->
+  <ellipse cx="230" cy="330" rx="118" ry="92" fill="url(#bodyGrad)"/>
+
+  <!-- belly -->
+  <ellipse cx="235" cy="355" rx="72" ry="56" fill="url(#bellyGrad)"/>
+
+  <!-- back ridge spikes -->
+  <g fill="#6FC98A">
+    <path d="M 150 250 q 8 -18 16 0 q -8 8 -16 0"/>
+    <path d="M 180 232 q 8 -20 16 0 q -8 9 -16 0"/>
+    <path d="M 213 222 q 8 -20 16 0 q -8 9 -16 0"/>
+    <path d="M 247 220 q 8 -18 16 0 q -8 8 -16 0"/>
+  </g>
+
+  <!-- front feet gripping branch -->
+  <ellipse cx="300" cy="410" rx="18" ry="12" fill="#6FC98A"/>
+  <ellipse cx="330" cy="398" rx="18" ry="12" fill="#6FC98A"/>
+
+  <!-- front arm -->
+  <path d="M 300 340 Q 320 380 300 408" stroke="#7FD8A6" stroke-width="20" fill="none" stroke-linecap="round"/>
+
+  <!-- head -->
+  <ellipse cx="330" cy="255" rx="88" ry="78" fill="url(#bodyGrad)"/>
+
+  <!-- casque bump on top of head -->
+  <path d="M 300 182 Q 330 155 362 182 Q 345 195 315 195 Z" fill="#7FD8A6"/>
+
+  <!-- cheek blush -->
+  <circle cx="300" cy="285" r="22" fill="url(#cheekGlow)"/>
+  <circle cx="372" cy="280" r="22" fill="url(#cheekGlow)"/>
+
+  <!-- eye mounds -->
+  <circle cx="305" cy="235" r="42" fill="#79D69F"/>
+  <circle cx="378" cy="238" r="40" fill="#79D69F"/>
+
+  <!-- eyes -->
+  <circle cx="305" cy="235" r="27" fill="#FFFFFF"/>
+  <circle cx="378" cy="238" r="26" fill="#FFFFFF"/>
+  <circle cx="309" cy="239" r="15" fill="#4A3B7A"/>
+  <circle cx="381" cy="242" r="14" fill="#4A3B7A"/>
+  <circle cx="304" cy="233" r="5" fill="#FFFFFF"/>
+  <circle cx="376" cy="236" r="5" fill="#FFFFFF"/>
+
+  <!-- smile -->
+  <path d="M 320 300 Q 340 318 362 300" stroke="#4A3B7A" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- curled tongue-tip flourish (tiny, playful, not aggressive) -->
+  <circle cx="345" cy="310" r="6" fill="#FF9EC0"/>
+
+  <!-- little sparkle accents to tie to the "pivot" glow -->
+  <g fill="#C084FC" opacity="0.85">
+    <circle cx="440" cy="180" r="5"/>
+    <circle cx="465" cy="210" r="3.5"/>
+    <circle cx="60" cy="240" r="4"/>
+  </g>
+</svg>

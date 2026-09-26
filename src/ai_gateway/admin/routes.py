@@ -631,7 +631,7 @@ async def add_account(
 
     # An explicit label overrides the auto-derived slug entirely (no
     # domain-stripping -- the admin typed this on purpose, e.g. 'personal'
-    # instead of the auto-generated 'one_anon_201'). Falls back to
+    # instead of the auto-generated 'jane_doe'). Falls back to
     # deriving from the username exactly as before when left blank.
     base_slug = sanitize_account_key(label) if label else slugify_account_label(username)
     account_key = unique_account_key(working.providers[provider_name].accounts, base_slug)

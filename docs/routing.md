@@ -1,4 +1,12 @@
+Part of the [LLMPivot](../README.md) documentation.
+
 # Routing and failure handling
+
+## Table of contents
+
+- [How routing works](#how-routing-works)
+- [Filtering non-chat model variants out of a wildcard](#filtering-non-chat-model-variants-out-of-a-wildcard)
+- [Wildcard model discovery — provider support varies](#wildcard-model-discovery--provider-support-varies)
 
 ## How routing works
 

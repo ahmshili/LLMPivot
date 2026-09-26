@@ -194,16 +194,16 @@ async def lifespan(app: FastAPI):
     app.state.api_auth_token = api_auth_token
     app.state.admin_auth_token = admin_auth_token
 
-    logger.info("AI Gateway started with %d endpoint(s).", len(candidates_by_endpoint))
+    logger.info("LLMPivot started with %d endpoint(s).", len(candidates_by_endpoint))
     try:
         yield
     finally:
         await gateway_client.aclose()
-        logger.info("AI Gateway shut down.")
+        logger.info("LLMPivot shut down.")
 
 
 app = FastAPI(
-    title="AI Gateway",
+    title="LLMPivot",
     description="A lightweight OpenAI-compatible gateway that orchestrates free-tier LLM APIs on top of LiteLLM.",
     version="0.1.0",
     lifespan=lifespan,

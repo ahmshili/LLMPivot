@@ -1,10 +1,10 @@
 [project]
 name = "ai-gateway"
 version = "0.1.0"
-description = "A lightweight OpenAI-compatible AI Gateway that orchestrates free-tier LLM APIs on top of LiteLLM."
+description = "LLMPivot: a lightweight OpenAI-compatible gateway that orchestrates free-tier LLM APIs on top of LiteLLM."
 readme = "README.md"
 requires-python = ">=3.13"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 dependencies = [
     "fastapi>=0.115",
     "pydantic>=2.9",

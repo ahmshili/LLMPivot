@@ -24,7 +24,7 @@ import os
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="ai-gateway",
-        description="Run the AI Gateway (equivalent to `uvicorn ai_gateway.main:app`, with friendlier flags).",
+        description="Run LLMPivot (equivalent to `uvicorn ai_gateway.main:app`, with friendlier flags).",
     )
     parser.add_argument(
         "--data-dir",

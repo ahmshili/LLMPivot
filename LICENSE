@@ -1,0 +1,82 @@
+LLMPivot Personal Use License
+Copyright (c) 2026 ahmshili (https://github.com/ahmshili/LLMPivot)
+
+This is not a standard open-source license. Read it before using this
+software. It is not a substitute for legal advice — if you need
+enforceable legal certainty about a specific use case, consult a
+qualified lawyer.
+
+1. GRANT OF USE
+
+Subject to the conditions below, permission is granted to any person
+obtaining a copy of this software and associated documentation files
+(the "Software") to use the Software for personal, non-commercial
+purposes only.
+
+2. CONDITIONS
+
+   a. Non-commercial use only. The Software may not be used, in whole
+      or in part, for any commercial purpose, including but not limited
+      to selling it, offering it as a paid or ad-supported service, or
+      using it internally within a for-profit business.
+
+   b. No redistribution. The Software, in original or modified form,
+      may not be redistributed, republished, or made available through
+      any channel other than the original repository at
+      https://github.com/ahmshili/LLMPivot.
+
+   c. No forks or separate copies. Modification of the Software is
+      permitted only for the purpose of contributing that change back
+      to the original repository above, via pull request. Creating or
+      maintaining a copy of the Software (forked or otherwise) in a
+      separate repository, under a separate account, or on a separate
+      platform, for any purpose other than submitting a pull request to
+      the original repository, is not authorized.
+
+   d. Mandatory attribution. Any mention, showcase, write-up, or
+      reference to this Software, in any context, must credit the
+      original creator and link back to the original repository above.
+      This applies whether or not the Software itself is redistributed.
+
+   e. This notice, and the full text of this license, must be preserved
+      in any copy or substantial portion of the Software that the
+      conditions above otherwise permit you to make or use.
+
+3. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. THE AUTHOR MAKES NO REPRESENTATION THAT THE SOFTWARE
+IS SUITABLE, ACCURATE, RELIABLE, OR SAFE FOR ANY PARTICULAR PURPOSE.
+
+4. NO LIABILITY — USER ASSUMES ALL RESPONSIBILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL
+THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, LOSS, OR OTHER LIABILITY
+OF ANY KIND, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+This includes, without limitation, any liability arising from:
+
+   - your configuration or misconfiguration of the Software;
+   - your use of the Software with any third-party LLM provider,
+     including any violation of that provider's terms of service,
+     usage policy, rate limits, or acceptable-use policy;
+   - any account suspension, ban, financial charge, or other
+     consequence resulting from how you use the Software with your own
+     provider accounts, including free-tier or quota-limited accounts;
+   - any data loss, security incident, or downtime resulting from
+     running the Software.
+
+By using the Software, you acknowledge and agree that you are solely
+and entirely responsible for how you configure, deploy, and use it,
+and for ensuring your use complies with the terms of every third-party
+service you connect it to. The author bears no responsibility
+whatsoever for your use of the Software.
+
+5. TERMINATION
+
+Any use of the Software in violation of this license automatically
+terminates your rights under it. The author reserves the right to
+request removal of any unauthorized copy, fork, or distribution.

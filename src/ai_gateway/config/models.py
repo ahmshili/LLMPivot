@@ -337,7 +337,7 @@ class SecurityConfig(BaseModel):
 
 
 class GatewayConfig(BaseModel):
-    """Root configuration object for the AI Gateway."""
+    """Root configuration object for LLMPivot."""
 
     model_config = ConfigDict(extra="forbid")
 

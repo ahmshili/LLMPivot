@@ -1,4 +1,12 @@
+Part of the [LLMPivot](../README.md) documentation.
+
 # Configuration
+
+## Table of contents
+
+- [Configuring LiteLLM itself](#configuring-litellm-itself)
+- [Restricting which models LiteLLM will serve](#restricting-which-models-litellm-will-serve)
+- [Running](#running)
 
 Copy `config.example.yaml` to `config.yaml` and `.env.example` to `.env`,
 then fill in real values. The example file documents every field; a JSON

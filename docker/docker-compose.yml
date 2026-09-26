@@ -1,0 +1,33 @@
+# Brings up LiteLLM and LLMPivot as two separate containers on one
+# network. Run from the repo root:
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# See ../docs/docker.md for the full explanation, including why this
+# project doesn't ship a single combined container.
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    volumes:
+      - ../litellm-config.example.yaml:/app/config.yaml
+    ports:
+      - "4000:4000"
+    environment:
+      GEMINI_API_KEY: placeholder
+    restart: unless-stopped
+
+  llmpivot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      AI_GATEWAY_DATA_DIR: /data
+    depends_on:
+      - litellm
+    restart: unless-stopped
