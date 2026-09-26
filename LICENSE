@@ -1,64 +1,100 @@
-LLMPivot Personal Use License
+PivotLLM Portfolio-View License (PPVL) v1.0
 Copyright (c) 2026 ahmshili (https://github.com/ahmshili/LLMPivot)
+Contact: a.shili.pers@gmail.com
 
-This is not a standard open-source license. Read it before using this
-software. It is not a substitute for legal advice — if you need
-enforceable legal certainty about a specific use case, consult a
-qualified lawyer.
+This is a source-available, NOT an open-source, license. It is shared
+publicly for portfolio review, technical evaluation, and educational
+reading -- not as software you are free to run, deploy, redistribute,
+or build on outside the terms below. Read it fully before doing
+anything with this code. It is not legal advice; if you need
+enforceable certainty about a specific use case, consult a lawyer.
 
-1. GRANT OF USE
+1. WHAT IS PERMITTED
 
-Subject to the conditions below, permission is granted to any person
-obtaining a copy of this software and associated documentation files
-(the "Software") to use the Software for personal, non-commercial
-purposes only.
+   a. Viewing and reading. Anyone may read, browse, and study the
+      source code, documentation, and this repository's history.
 
-2. CONDITIONS
+   b. Local evaluation. Anyone may clone the repository and run the
+      Software locally, for the sole purpose of evaluating it (e.g. as
+      part of a hiring process, a code review, or personal learning).
+      "Evaluation" means trying it out to see how it works -- it does
+      NOT mean using it to serve real traffic, real users, or real
+      workloads of any kind, for yourself or anyone else, even
+      privately, even unpaid, even temporarily.
 
-   a. Non-commercial use only. The Software may not be used, in whole
-      or in part, for any commercial purpose, including but not limited
-      to selling it, offering it as a paid or ad-supported service, or
-      using it internally within a for-profit business.
+   c. Contributing back. Anyone may modify a local copy for the
+      purpose of proposing that change back to the original repository
+      at https://github.com/ahmshili/LLMPivot via a pull request.
+      Improving the project this way -- including substantial
+      rewrites -- is welcomed and encouraged.
 
-   b. No redistribution. The Software, in original or modified form,
-      may not be redistributed, republished, or made available through
-      any channel other than the original repository at
-      https://github.com/ahmshili/LLMPivot.
+2. WHAT IS NOT PERMITTED
 
-   c. No forks or separate copies. Modification of the Software is
-      permitted only for the purpose of contributing that change back
-      to the original repository above, via pull request. Creating or
-      maintaining a copy of the Software (forked or otherwise) in a
-      separate repository, under a separate account, or on a separate
-      platform, for any purpose other than submitting a pull request to
-      the original repository, is not authorized.
+   a. No private, personal, or production use. Running the Software,
+      in original or modified form, for any purpose beyond the local
+      evaluation described in 1(b) -- including your own private,
+      personal, non-commercial use -- is not authorized without the
+      author's prior written consent.
 
-   d. Mandatory attribution. Any mention, showcase, write-up, or
-      reference to this Software, in any context, must credit the
-      original creator and link back to the original repository above.
-      This applies whether or not the Software itself is redistributed.
+   b. No commercial use. The Software may not be used, in whole or in
+      part, for any commercial purpose, including selling it, offering
+      it as a paid or ad-supported service, or using it internally
+      within a for-profit business.
 
-   e. This notice, and the full text of this license, must be preserved
-      in any copy or substantial portion of the Software that the
-      conditions above otherwise permit you to make or use.
+   c. No redistribution, no hosting elsewhere, no separate copies. The
+      Software, in original or modified form, may not be redistributed,
+      rehosted, republished, mirrored, or made available through any
+      channel, repository, hosting account, or platform other than the
+      original repository linked above. This includes forks or clones
+      kept in a separate repository or account for any purpose other
+      than preparing a pull request to that original repository. A
+      change you make locally to propose upstream is fine; keeping or
+      publishing your own standing copy elsewhere is not.
 
-3. NO WARRANTY
+   d. No claiming authorship. No one other than the author may
+      represent the Software, in original or modified form, as their
+      own work, in a portfolio, resume, job application, publication,
+      or otherwise. Brief mentions, write-ups, or showcases of the
+      Software from anywhere other than the original repository must
+      still credit the original author and repository (see 3).
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
-NONINFRINGEMENT. THE AUTHOR MAKES NO REPRESENTATION THAT THE SOFTWARE
-IS SUITABLE, ACCURATE, RELIABLE, OR SAFE FOR ANY PARTICULAR PURPOSE.
+3. MANDATORY ATTRIBUTION
 
-4. NO LIABILITY — USER ASSUMES ALL RESPONSIBILITY
+   Any mention, showcase, write-up, demo, screenshot, or reference to
+   this Software, in any context and however brief, must credit the
+   original author and link back to the original repository above.
+   This applies whether or not the Software itself is distributed
+   alongside that mention.
 
-TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL
-THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, LOSS, OR OTHER LIABILITY
-OF ANY KIND, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
-ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+   This notice, the full text of this license, and every
+   author/contact/repository notice embedded in the Software's source
+   files, HTTP responses, API metadata, and user interface must be
+   preserved in any copy, deployment, or evaluation instance that this
+   license otherwise permits you to run. Removing, obscuring, or
+   altering those notices is a violation of this license, independent
+   of and in addition to any other violation involved.
 
-This includes, without limitation, any liability arising from:
+4. NO WARRANTY
 
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NONINFRINGEMENT. THE AUTHOR MAKES NO REPRESENTATION THAT THE
+   SOFTWARE IS SUITABLE, ACCURATE, RELIABLE, OR SAFE FOR ANY PARTICULAR
+   PURPOSE.
+
+5. NO LIABILITY -- USER ASSUMES ALL RESPONSIBILITY
+
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL
+   THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, LOSS, OR OTHER
+   LIABILITY OF ANY KIND, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+   OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE,
+   ANY USE OF IT, OR ANY BREACH OF THIS LICENSE.
+
+   This includes, without limitation, any liability arising from:
+
+   - any use of the Software beyond what this license authorizes,
+     including unauthorized private, personal, or production use;
    - your configuration or misconfiguration of the Software;
    - your use of the Software with any third-party LLM provider,
      including any violation of that provider's terms of service,
@@ -67,16 +103,29 @@ This includes, without limitation, any liability arising from:
      consequence resulting from how you use the Software with your own
      provider accounts, including free-tier or quota-limited accounts;
    - any data loss, security incident, or downtime resulting from
-     running the Software.
+     running the Software;
+   - any illegal act, regulatory violation, or breach of a third-party
+     contract that results from your use of the Software.
 
-By using the Software, you acknowledge and agree that you are solely
-and entirely responsible for how you configure, deploy, and use it,
-and for ensuring your use complies with the terms of every third-party
-service you connect it to. The author bears no responsibility
-whatsoever for your use of the Software.
+   You, and only you, are solely and entirely responsible for how you
+   obtain, configure, deploy, and use the Software, and for ensuring
+   that use complies with this license, with the law, and with the
+   terms of every third-party service you connect it to. Any use
+   outside the terms of this license is unauthorized and undertaken
+   entirely at your own risk and on your own responsibility -- the
+   author bears no responsibility whatsoever for it, whether or not it
+   turns out to be unlawful or in breach of a contract you hold with
+   someone else.
 
-5. TERMINATION
+6. TERMINATION
 
-Any use of the Software in violation of this license automatically
-terminates your rights under it. The author reserves the right to
-request removal of any unauthorized copy, fork, or distribution.
+   Any use of the Software in violation of this license automatically
+   and immediately terminates your rights under it. The author reserves
+   the right to request removal or takedown of any unauthorized copy,
+   fork, deployment, or distribution, and to pursue any remedy
+   available under applicable law.
+
+7. NO OTHER RIGHTS GRANTED
+
+   No rights are granted by this license except those explicitly
+   listed in Section 1. All other rights are reserved by the author.
