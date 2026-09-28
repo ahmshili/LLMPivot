@@ -192,6 +192,14 @@ class LiteLLMConfig(BaseModel):
             "is the on/off toggle for proxy-side auth."
         ),
     )
+    demo_mode: bool = Field(
+        default=False,
+        description=(
+            "If true, runs in demo mode without connecting to LiteLLM. "
+            "Useful for showcasing the UI without a live backend. All "
+            "endpoints appear configured but requests return mock responses."
+        ),
+    )
 
 
 class RoutingConfig(BaseModel):

@@ -17,10 +17,11 @@ notice must be preserved. Contact: a.shili.pers@gmail.com
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, AsyncIterator
 
 import httpx
 
@@ -84,11 +85,64 @@ class GatewayClient:
         open_chat_completion_stream()
         list_models()
         health_check()
+
+    When demo_mode is enabled (via config or DEMO_MODE env var), all LiteLLM
+    connections are bypassed and mock responses are returned instead.
     """
 
     def __init__(self, config: LiteLLMConfig) -> None:
         self._config = config
         self._client = httpx.AsyncClient(base_url=config.base_url, timeout=config.timeout_seconds)
+
+    def _is_demo_mode(self) -> bool:
+        """Check if demo mode is enabled via config or environment variable."""
+        if self._config.demo_mode:
+            return True
+        return os.environ.get("DEMO_MODE", "").lower() == "true"
+
+    def _get_demo_models(self) -> list[str]:
+        """Return a predefined list of demo models."""
+        return [
+            "gemini/gemini-2.5-flash",
+            "gemini/gemini-2.0-flash",
+            "groq/llama-3.1-8b-instant",
+            "groq/mixtral-8x7b-32768",
+            "openrouter/anthracite-org/mixtral-8x7b",
+        ]
+
+    def _get_demo_response(self, model: str, payload: dict[str, Any]) -> GatewayResponse:
+        """Generate a mock chat completion response for demo mode."""
+        import time
+
+        messages = payload.get("messages", [])
+        last_message = messages[-1] if messages else {}
+        user_content = last_message.get("content", "Demo request") if isinstance(last_message, dict) else "Demo request"
+
+        return GatewayResponse(
+            success=True,
+            status_code=200,
+            body={
+                "id": "chatcmpl-demo-mock",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": model,
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": f"Demo response: This is a mock response from {model}. Your message was: {str(user_content)[:100]}...",
+                    },
+                    "finish_reason": "stop",
+                }],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "total_tokens": 30,
+                },
+            },
+            raw_text="",
+            exception=None,
+        )
 
     def _auth_headers(self) -> dict[str, str]:
         """Build the Authorization header for calls to the LiteLLM proxy
@@ -147,6 +201,11 @@ class GatewayClient:
         body["api_key"] = api_key
         if candidate.api_base:
             body["api_base"] = candidate.api_base
+
+        # Demo mode: return mock response without calling LiteLLM
+        if self._is_demo_mode():
+            logger.debug("Demo mode: returning mock response for %s", candidate.litellm_model)
+            return self._get_demo_response(candidate.litellm_model, payload)
 
         try:
             response = await self._client.post(
@@ -229,6 +288,43 @@ class GatewayClient:
             pool=connect_timeout,
         )
 
+        # Demo mode: return mock streaming response without calling LiteLLM
+        if self._is_demo_mode():
+            logger.debug("Demo mode: returning mock stream for %s", candidate.litellm_model)
+            import time
+            model = candidate.litellm_model
+            chunk_content = f"Demo: This is a mock streaming response from {model}."
+            
+            async def mock_stream_iter() -> AsyncIterator[bytes]:
+                """Yield mock SSE chunks for streaming demo."""
+                import json
+                for i, char in enumerate(chunk_content):
+                    chunk_data = {
+                        "choices": [{
+                            "index": 0,
+                            "delta": {"content": char, "finish_reason": None},
+                        }],
+                        "model": model,
+                        "id": "chatcmpl-demo-mock-stream",
+                    }
+                    chunk = f"data: {json.dumps(chunk_data)}\n\n"
+                    yield chunk.encode("utf-8")
+                    await asyncio.sleep(0.01)  # Small delay between chunks
+                # Send final chunk
+                yield b"data: [DONE]\n\n"
+
+            async def mock_close() -> None:
+                pass
+
+            return OpenStreamResult(
+                success=True,
+                status_code=200,
+                raw_text="",
+                exception=None,
+                body_iter=mock_stream_iter(),
+                close=mock_close,
+            )
+
         stream_ctx = self._client.stream(
             "POST",
             "/v1/chat/completions",
@@ -273,7 +369,13 @@ class GatewayClient:
         NOT swallow errors: a 401 here means the gateway itself is
         misconfigured against LiteLLM, and should fail startup loudly
         rather than surface later as every account being disabled.
+
+        In demo mode, returns a predefined list of mock models.
         """
+        if self._is_demo_mode():
+            logger.info("Demo mode: returning mock model list")
+            return self._get_demo_models()
+
         response = await self._client.get("/v1/models", headers=self._auth_headers())
         response.raise_for_status()
         data = response.json()
@@ -281,6 +383,8 @@ class GatewayClient:
 
     async def health_check(self) -> bool:
         """Return True if LiteLLM is reachable."""
+        if self._is_demo_mode():
+            return True  # Demo mode always appears healthy
         try:
             response = await self._client.get("/v1/models", headers=self._auth_headers())
         except httpx.RequestError:

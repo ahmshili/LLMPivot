@@ -11,9 +11,13 @@ litellm:
   timeout_seconds: 30
   # Set this to authenticate the gateway to LiteLLM itself (LiteLLM's
   # general_settings.master_key, or a scoped virtual key -- see
-  # litellm-config.example.yaml). Leave unset/commented to send no
+  # litellm-config-example.yaml). Leave unset/commented to send no
   # Authorization header, matching an unauthenticated LiteLLM proxy.
   # proxy_api_key_env: "LITELLM_MASTER_KEY"
+  # Demo mode: set to true to run without a LiteLLM backend.
+  # All requests return mock responses; endpoints appear configured.
+  # Can also be set via DEMO_MODE environment variable.
+  # demo_mode: false
 
 routing:
   # Hard cap on candidates attempted per request, independent of pool size.
