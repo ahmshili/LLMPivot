@@ -79,14 +79,15 @@ class TestGatewayClientDemoMode:
         result = await client.health_check()
         assert result is True
 
-    def test_get_demo_response_returns_valid_structure(self, monkeypatch):
-        """Test _get_demo_response returns a proper response structure."""
+    @pytest.mark.asyncio
+    async def test_get_demo_response_returns_valid_structure(self, monkeypatch):
+        """Test _get_demo_response returns a proper response structure with simulated delay."""
         monkeypatch.delenv("DEMO_MODE", raising=False)
         config = LiteLLMConfig(demo_mode=True)
         client = GatewayClient(config)
         
         payload = {"messages": [{"role": "user", "content": "Hello"}]}
-        response = client._get_demo_response("gemini/gemini-2.5-flash", payload)
+        response = await client._get_demo_response("gemini/gemini-2.5-flash", payload)
         
         assert response.success is True
         assert response.status_code == 200

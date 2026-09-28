@@ -204,3 +204,84 @@ async def test_batch_test_uses_username_for_display(sample_config_path, account_
     )
     usernames = {r.username for r in results}
     assert "displayed@example.com" in usernames
+
+
+@pytest.mark.asyncio
+async def test_retry_logs_ok_outcome_matching_ui(
+    sample_config_path, account_env_vars, caplog
+) -> None:
+    """The app log must state what the UI fragment shows: an OK badge for
+    a passing test. (The HTTP access-log line alone only proves a
+    fragment was rendered -- it always says 200 even when the provider
+    call failed.)
+    """
+    import logging
+
+    manager = ConfigManager(sample_config_path)
+    config = manager.load()
+    candidate = build_test_candidate(config, manager, "gemini", "personal", "gemini-2.5-flash")
+
+    gateway_client = FakeGatewayClient(
+        [GatewayResponse(success=True, status_code=200, body={"ok": True}, raw_text="{}")]
+    )
+    with caplog.at_level(logging.INFO, logger="ai_gateway.admin.testing"):
+        outcome = await run_test_candidate_with_retry(gateway_client, candidate, retry_delay_seconds=0)
+
+    assert outcome.success is True
+    infos = [r for r in caplog.records if r.levelno == logging.INFO]
+    assert any(
+        "Test OK for gemini/personal (model 'gemini-2.5-flash')" in r.getMessage() for r in infos
+    )
+    # ...and nothing may claim a failure for a passing test.
+    assert not any("Test FAILED" in r.getMessage() for r in infos)
+
+
+@pytest.mark.asyncio
+async def test_retry_logs_failure_outcome_matching_ui(
+    sample_config_path, account_env_vars, caplog
+) -> None:
+    """Regression test for the reported symptom: the UI showed
+    AUTH_FAILURE (403) while the log only showed the admin route's own
+    '200 OK' access line, with no record of the provider-level failure.
+    The outcome log line must carry the same badge + status the UI shows.
+    """
+    import logging
+
+    manager = ConfigManager(sample_config_path)
+    config = manager.load()
+    candidate = build_test_candidate(config, manager, "gemini", "work", "gemini-3.6-flash")
+
+    gateway_client = FakeGatewayClient(
+        [
+            GatewayResponse(
+                success=False,
+                status_code=403,
+                body=None,
+                raw_text='{"error":{"code":403,"message":"Your project has been denied access.","status":"PERMISSION_DENIED"}}',
+            )
+        ]
+    )
+    with caplog.at_level(logging.INFO, logger="ai_gateway.admin.testing"):
+        outcome = await run_test_candidate_with_retry(gateway_client, candidate, retry_delay_seconds=0)
+
+    assert outcome.success is False
+    assert outcome.failure_type == FailureType.AUTH_FAILURE
+    infos = [r for r in caplog.records if r.levelno == logging.INFO]
+    outcome_lines = [r.getMessage() for r in infos if "Test FAILED" in r.getMessage()]
+    assert outcome_lines, "failure outcome was never logged"
+    line = outcome_lines[0]
+    assert "Test FAILED for gemini/work (model 'gemini-3.6-flash')" in line
+    assert "AUTH_FAILURE (403)" in line
+    # Deterministic failures are not retried -- exactly one outcome line.
+    assert len(outcome_lines) == 1
+
+
+def test_short_message_collapses_multiline_bodies() -> None:
+    from ai_gateway.admin.testing import _short_message
+
+    messy = '{\n  "error": {\n    "message": "boom",\n    "status": "PERMISSION_DENIED"\n  }\n}'
+    collapsed = _short_message(messy)
+    assert "\n" not in collapsed
+    assert "boom" in collapsed
+    assert _short_message("x" * 500).endswith("...")
+    assert len(_short_message("x" * 500)) == 200

@@ -31,15 +31,42 @@
   </datalist>
   <button type="button" id="add-model-btn">+ Add to priority list</button>
   {% if accounts %}
-  <form class="inline" hx-post="/admin/providers/{{ provider_name }}/accounts/{{ accounts[0].key }}/test"
-        hx-target="#new-model-test-result" hx-swap="innerHTML" hx-include="#new-model-input">
-    <select id="new-model-test-account" onchange="this.closest('form').setAttribute('hx-post', this.value);">
+  <!-- Plain form + fetch, NOT htmx: htmx snapshots hx-post once at init,
+       so swapping the attribute on account-change is silently ignored and
+       every test would go to whichever account was first in the list. The
+       URL must be built from the SELECTED account at submit time, the same
+       way the model-table rows below do it. -->
+  <form id="new-model-test-form" class="inline" method="post"
+        action="/admin/providers/{{ provider_name }}/accounts/{{ accounts[0].key }}/test">
+    <select id="new-model-test-account">
       {% for a in accounts %}
-      <option value="/admin/providers/{{ provider_name }}/accounts/{{ a.key }}/test">{{ a.username }}</option>
+      <option value="{{ a.key }}">{{ a.username }}</option>
       {% endfor %}
     </select>
     <button type="submit" title="Test the model above against the selected account, without saving it to the priority list first">Test</button>
   </form>
+  <script>
+    document.getElementById('new-model-test-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+      const provider = {{ provider_name|tojson }};
+      const account = document.getElementById('new-model-test-account').value;
+      const model = document.getElementById('new-model-input').value.trim();
+      const resultSpan = document.getElementById('new-model-test-result');
+      if (!model) {
+        resultSpan.innerHTML = '<span class="badge badge-fail">CONFIG_ERROR</span><div class="status-msg fail">Type or pick a model to test first.</div>';
+        return;
+      }
+      resultSpan.textContent = 'Testing\u2026';
+      fetch('/admin/providers/' + encodeURIComponent(provider) + '/accounts/' + encodeURIComponent(account) + '/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'model=' + encodeURIComponent(model),
+      })
+        .then(function (r) { return r.text(); })
+        .then(function (html) { resultSpan.innerHTML = html; })
+        .catch(function () { resultSpan.textContent = 'Request failed.'; });
+    });
+  </script>
   <span id="new-model-test-result"></span>
   {% endif %}
 </div>

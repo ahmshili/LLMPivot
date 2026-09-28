@@ -131,6 +131,92 @@ def test_accounts_table_header_column_count_matches_js_injected_rows() -> None:
     )
 
 
+def test_new_model_test_form_posts_to_per_account_route() -> None:
+    """Regression tests for two real reported bugs, in the same top "Test"
+    form next to the model input:
+
+    1. It once POSTed an aggregate route (/providers/{name}/test-model)
+       instead of the per-account route every other Test button uses,
+       diverging the log format.
+    2. Restoring the htmx form with an onchange handler that rewrote the
+       form's hx-post attribute silently did nothing: htmx snapshots
+       hx-post once at init and never re-reads it, so every test went to
+       whichever account was FIRST in the dropdown (the log showed
+       /accounts/personal/test for every submit regardless of selection).
+
+    The URL must therefore be built from the selected account at submit
+    time, via fetch -- the same pattern the model-table rows already use
+    for exactly this reason.
+    """
+    source = (TEMPLATES_DIR / "provider_detail.html").read_text(encoding="utf-8")
+
+    # Per-account route as the no-JS fallback; option values are account
+    # KEYS (not URLs), and the submit handler builds the URL itself.
+    assert 'accounts/{{ accounts[0].key }}/test' in source
+    assert 'value="{{ a.key }}"' in source
+
+    assert "new-model-test-form').addEventListener('submit'" in source
+    assert "encodeURIComponent(account)" in source
+
+    # The htmx attribute-swap trap must not come back.
+    assert "setAttribute('hx-post'" not in source
+    assert "hx-include" not in source
+    # The aggregate route must not have crept back into the template.
+    # (Deliberately /test-model, not the bare substring: the account-row
+    # datalist is legitimately named test-model-options-datalist.)
+    assert "/test-model" not in source
+
+
+def test_test_model_aggregate_route_is_gone() -> None:
+    """Companion to the template check above: the aggregate
+    /providers/{name}/test-model admin route was removed in favor of the
+    existing per-account route -- make sure it stays gone.
+    """
+    routes_source = (
+        Path(__file__).parent.parent / "src" / "ai_gateway" / "admin" / "routes.py"
+    ).read_text(encoding="utf-8")
+    assert "/test-model" not in routes_source
+
+
+def test_test_route_degrades_empty_model_to_friendly_fragment(
+    sample_config_path, account_env_vars
+) -> None:
+    """Regression test for a real logged symptom: submitting the top Test
+    form with the model input empty produced a raw FastAPI 422 (required
+    `model` form field), which rendered as nothing in the targeted
+    fragment span. An empty model is an operator slip -- degrade to a
+    friendly inline fragment with HTTP 200 instead.
+    """
+    from fastapi.testclient import TestClient
+
+    from ai_gateway.gateway_client import GatewayResponse
+    from test_admin_models_route import StubGatewayClient, build_admin_app
+
+    class OkClient(StubGatewayClient):
+        async def send_chat_completion(self, candidate, payload, *, timeout_seconds=None):
+            return GatewayResponse(success=True, status_code=200, body={}, raw_text="{}")
+
+    app = build_admin_app(sample_config_path, gateway_client=OkClient())
+    client = TestClient(app)
+
+    # Empty model value -> 200 + friendly fragment, no 422.
+    resp = client.post("/admin/providers/gemini/accounts/personal/test", data={"model": "  "})
+    assert resp.status_code == 200
+    assert "No model given" in resp.text
+    assert "CONFIG_ERROR" in resp.text
+
+    # Entirely missing field -> same graceful behavior.
+    resp = client.post("/admin/providers/gemini/accounts/personal/test", data={})
+    assert resp.status_code == 200
+    assert "No model given" in resp.text
+
+    # A non-empty model must still reach the real test path (stub client
+    # returns success for any send_chat_completion call).
+    resp = client.post("/admin/providers/gemini/accounts/personal/test", data={"model": "gemini-2.5-flash"})
+    assert resp.status_code == 200
+    assert "badge-ok" in resp.text
+
+
 def test_models_table_header_column_count_is_nine() -> None:
     """Companion to the accounts-table check above, for the JS-rendered
     priority-models table. Its rows are built entirely client-side

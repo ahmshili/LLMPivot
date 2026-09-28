@@ -154,6 +154,21 @@ def _state_badge_class(state: AccountState) -> str:
     }.get(state, "")
 
 
+def _empty_model_outcome():
+    """TestOutcome stand-in for an empty-model submit: mirrors what the UI
+    shows for a config mistake (a friendly badge + message), without
+    manufacturing a fake FailureType for a request that never ran.
+    """
+    from ai_gateway.admin.testing import TestOutcome
+
+    return TestOutcome(
+        success=False,
+        status_code=None,
+        failure_type=None,
+        message="No model given. Type or pick a model, then test again.",
+    )
+
+
 def _account_rows(app_state, provider_name: str, provider: ProviderConfig) -> list[dict]:
     rows = []
     for account_name, account in provider.accounts.items():
@@ -988,10 +1003,21 @@ async def reorder_accounts(request: Request, provider_name: str, order: str = Fo
 
 
 @router.post("/providers/{provider_name}/accounts/{account_name}/test", response_class=HTMLResponse)
-async def test_account(request: Request, provider_name: str, account_name: str, model: str = Form(...)):
+async def test_account(
+    request: Request, provider_name: str, account_name: str, model: str = Form("")
+) -> HTMLResponse:
+    """Test one model against one account, rendering the result fragment.
+
+    An empty/missing model degrades to a friendly inline fragment (HTTP
+    200) rather than FastAPI's raw 422 -- a form submitted before the
+    model input was filled is an operator slip, not an error worth
+    crashing the fragment swap on.
+    """
     app_state = request.app.state
     config = app_state.config_manager.config
-    candidate = build_test_candidate(config, app_state.config_manager, provider_name, account_name, model)
+    if not model.strip():
+        return render(request, "partials/test_result.html", {"outcome": _empty_model_outcome()})
+    candidate = build_test_candidate(config, app_state.config_manager, provider_name, account_name, model.strip())
     outcome = await test_candidate_with_retry(
         app_state.gateway_client, candidate, config.admin.test_retry_delay_seconds
     )

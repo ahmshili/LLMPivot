@@ -236,6 +236,12 @@
           "default": null,
           "description": "Name of the environment variable holding the key used to authenticate to the LiteLLM proxy itself (its general_settings.master_key, or a scoped virtual key). This is separate from per-account provider API keys, which are injected per request. If unset, no Authorization header is sent to LiteLLM -- this is the on/off toggle for proxy-side auth.",
           "title": "Proxy Api Key Env"
+        },
+        "demo_mode": {
+          "default": false,
+          "description": "If true, runs in demo mode without connecting to LiteLLM. Useful for showcasing the UI without a live backend. All endpoints appear configured but requests return mock responses.",
+          "title": "Demo Mode",
+          "type": "boolean"
         }
       },
       "title": "LiteLLMConfig",
@@ -447,7 +453,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "Root configuration object for the AI Gateway.",
+  "description": "Root configuration object for LLMPivot.",
   "properties": {
     "litellm": {
       "$ref": "#/$defs/LiteLLMConfig"

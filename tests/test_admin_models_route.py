@@ -23,13 +23,13 @@ class StubGatewayClient:
         return True
 
 
-def build_admin_app(config_path) -> FastAPI:
+def build_admin_app(config_path, gateway_client: StubGatewayClient | None = None) -> FastAPI:
     app = FastAPI()
     app.include_router(admin_router)
 
     config_manager = ConfigManager(config_path)
     config_manager.load()
-    gateway_client = StubGatewayClient()
+    gateway_client = gateway_client or StubGatewayClient()
     cooldown_manager = CooldownManager(config_manager.config.cooldown)
     gateway_router = Router(
         candidates_by_endpoint={},

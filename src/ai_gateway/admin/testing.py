@@ -116,6 +116,11 @@ async def test_candidate_with_retry(
 ) -> TestOutcome:
     """Runs test_candidate, and if it failed with a retryable failure type,
     waits retry_delay_seconds and tries exactly once more.
+
+    Logs the final outcome either way, so the app log states what the UI
+    fragment shows (badge + status) for every admin-initiated test -- the
+    access-log line alone only proves a fragment was rendered, never what
+    it said.
     """
     outcome = await test_candidate(gateway_client, candidate)
     if not outcome.success and outcome.failure_type in _RETRYABLE_FAILURE_TYPES:
@@ -130,7 +135,31 @@ async def test_candidate_with_retry(
         if retry_delay_seconds:
             await asyncio.sleep(retry_delay_seconds)
         outcome = await test_candidate(gateway_client, candidate)
+
+    if outcome.success:
+        logger.info("Test OK for %s/%s (model '%s')", candidate.provider, candidate.account, candidate.model)
+    else:
+        badge = outcome.failure_type.value if outcome.failure_type else "CONFIG_ERROR"
+        status_part = f" ({outcome.status_code})" if outcome.status_code else ""
+        logger.info(
+            "Test FAILED for %s/%s (model '%s'): %s%s -- %s",
+            candidate.provider,
+            candidate.account,
+            candidate.model,
+            badge,
+            status_part,
+            _short_message(outcome.message),
+        )
     return outcome
+
+
+def _short_message(message: str, limit: int = 200) -> str:
+    """Collapse a failure body to one log-friendly line -- provider error
+    bodies are often multi-line JSON blobs that would otherwise smear
+    across several log lines and bury the outcome summary.
+    """
+    collapsed = " ".join(message.split())
+    return collapsed if len(collapsed) <= limit else collapsed[: limit - 3] + "..."
 
 
 def priority_ordered_models(provider: ProviderConfig, live_models: list[str]) -> list[str]:

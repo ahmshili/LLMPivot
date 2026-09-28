@@ -110,9 +110,16 @@ class GatewayClient:
             "openrouter/anthracite-org/mixtral-8x7b",
         ]
 
-    def _get_demo_response(self, model: str, payload: dict[str, Any]) -> GatewayResponse:
-        """Generate a mock chat completion response for demo mode."""
+    async def _get_demo_response(self, model: str, payload: dict[str, Any]) -> GatewayResponse:
+        """Generate a mock chat completion response for demo mode.
+        
+        Simulates a realistic API call time (2-3 seconds) to match actual
+        LLM response times in production.
+        """
         import time
+
+        # Simulate realistic API call latency (2-3 seconds)
+        await asyncio.sleep(2.0 + (hash(model) % 1000) / 1000.0)
 
         messages = payload.get("messages", [])
         last_message = messages[-1] if messages else {}
@@ -205,7 +212,7 @@ class GatewayClient:
         # Demo mode: return mock response without calling LiteLLM
         if self._is_demo_mode():
             logger.debug("Demo mode: returning mock response for %s", candidate.litellm_model)
-            return self._get_demo_response(candidate.litellm_model, payload)
+            return await self._get_demo_response(candidate.litellm_model, payload)
 
         try:
             response = await self._client.post(
