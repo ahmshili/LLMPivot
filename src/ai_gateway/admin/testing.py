@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import fnmatch
+import json
 import logging
 import os
 from dataclasses import dataclass
@@ -103,12 +104,89 @@ async def test_candidate(gateway_client: GatewayClient, candidate: Candidate) ->
         exception=response.exception,
     )
     if response.raw_text:
-        message = response.raw_text[:300]
+        # Show the human-readable upstream reason ("Your project has been
+        # denied access. Please contact support."), not the raw nested-JSON
+        # wrapper LiteLLM relayed -- that blob buried the actual reason and
+        # got truncated mid-word in both the log and the UI fragment. The
+        # full body stays available at DEBUG for post-mortems.
+        friendly = extract_provider_error_message(response.raw_text)
+        logger.debug("Full failure body for %s/%s (model '%s'): %s", candidate.provider, candidate.account, candidate.model, response.raw_text)
+        message = friendly or response.raw_text[:300]
     elif response.exception:
         message = str(response.exception)
     else:
         message = "Unknown error"
     return TestOutcome(success=False, status_code=response.status_code, failure_type=failure_type, message=message)
+
+
+def extract_provider_error_message(raw_text: str) -> str | None:
+    """Pull the human-readable error message out of a provider failure
+    body, no matter how many layers of JSON it's wrapped in.
+
+    Real-world shape (LiteLLM relaying Gemini's 403):
+
+        {"error":{"message":"litellm.BadRequestError: GeminiException
+        BadRequestError - {\n \"error\": {\n \"code\": 403,\n \"message\":
+        \"Your project has been denied access.\", ... }"}}
+
+    i.e. error.message itself contains ANOTHER JSON object with its own
+    error.message. This unwraps: top-level error.message first, then, if
+    that still looks like a JSON-bearing blob, extracts the embedded
+    object's error.message. Non-JSON text is returned as-is (it may be a
+    perfectly readable message); only empty input returns None.
+    """
+    if not raw_text or not raw_text.strip():
+        return None
+
+    text = raw_text.strip()
+
+    def _message_of(obj) -> str | None:
+        if isinstance(obj, dict):
+            err = obj.get("error")
+            if isinstance(err, dict):
+                msg = err.get("message")
+                if isinstance(msg, str) and msg.strip():
+                    return msg.strip()
+            # Some providers use {"message": ...} without the "error" shell.
+            msg = obj.get("message")
+            if isinstance(msg, str) and msg.strip():
+                return msg.strip()
+        elif isinstance(obj, str) and obj.strip():
+            return obj.strip()
+        return None
+
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        parsed = None
+
+    if parsed is not None:
+        msg = _message_of(parsed)
+        if msg is not None:
+            text = msg
+
+    # The message may still be (or contain) a nested JSON object -- scan
+    # for the first '{' and try raw_decode, which tolerates trailing junk
+    # after the balanced object. Unwrap at most twice (LiteLLM -> provider).
+    # If nothing in the text parses as JSON, keep the original text as-is:
+    # a non-JSON failure body is still a legitimate message ("plain gateway
+    # timeout"), so this function returns the best message it found -- only
+    # genuinely EMPTY input yields None (callers keep a raw fallback for
+    # that case anyway).
+    for _ in range(2):
+        brace = text.find("{")
+        if brace == -1:
+            break
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(text[brace:])
+        except json.JSONDecodeError:
+            break
+        inner = _message_of(obj)
+        if inner is None or inner == text:
+            break
+        text = inner
+
+    return text.strip() or None
 
 
 async def test_candidate_with_retry(
@@ -124,8 +202,10 @@ async def test_candidate_with_retry(
     """
     outcome = await test_candidate(gateway_client, candidate)
     if not outcome.success and outcome.failure_type in _RETRYABLE_FAILURE_TYPES:
+        # Account/model tag FIRST: when scanning a busy log, the identity
+        # of the tested account is the thing the eye needs at column 0.
         logger.info(
-            "Test for %s/%s/%s failed with %s; retrying once after %.1fs.",
+            "[%s/%s/%s] Test failed with %s; retrying once after %.1fs.",
             candidate.provider,
             candidate.account,
             candidate.model,
@@ -136,13 +216,17 @@ async def test_candidate_with_retry(
             await asyncio.sleep(retry_delay_seconds)
         outcome = await test_candidate(gateway_client, candidate)
 
+    # Same leading-tag shape for both outcomes, so everything the test
+    # buttons emit scans as: [provider/account] verdict -- details.
     if outcome.success:
-        logger.info("Test OK for %s/%s (model '%s')", candidate.provider, candidate.account, candidate.model)
+        logger.info(
+            "[%s/%s] Test OK -- model '%s'", candidate.provider, candidate.account, candidate.model
+        )
     else:
         badge = outcome.failure_type.value if outcome.failure_type else "CONFIG_ERROR"
         status_part = f" ({outcome.status_code})" if outcome.status_code else ""
         logger.info(
-            "Test FAILED for %s/%s (model '%s'): %s%s -- %s",
+            "[%s/%s] Test FAILED -- model '%s': %s%s -- %s",
             candidate.provider,
             candidate.account,
             candidate.model,

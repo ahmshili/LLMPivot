@@ -6,6 +6,7 @@ import pytest
 
 from ai_gateway.admin.testing import (
     build_test_candidate,
+    extract_provider_error_message,
     first_concrete_model,
     ordered_test_models,
 )
@@ -230,7 +231,7 @@ async def test_retry_logs_ok_outcome_matching_ui(
     assert outcome.success is True
     infos = [r for r in caplog.records if r.levelno == logging.INFO]
     assert any(
-        "Test OK for gemini/personal (model 'gemini-2.5-flash')" in r.getMessage() for r in infos
+        "[gemini/personal] Test OK -- model 'gemini-2.5-flash'" in r.getMessage() for r in infos
     )
     # ...and nothing may claim a failure for a passing test.
     assert not any("Test FAILED" in r.getMessage() for r in infos)
@@ -270,7 +271,9 @@ async def test_retry_logs_failure_outcome_matching_ui(
     outcome_lines = [r.getMessage() for r in infos if "Test FAILED" in r.getMessage()]
     assert outcome_lines, "failure outcome was never logged"
     line = outcome_lines[0]
-    assert "Test FAILED for gemini/work (model 'gemini-3.6-flash')" in line
+    # Account tag FIRST at column 0, then verdict, then model details.
+    assert line.startswith("[gemini/work] Test FAILED")
+    assert "-- model 'gemini-3.6-flash': AUTH_FAILURE (403)" in line
     assert "AUTH_FAILURE (403)" in line
     # Deterministic failures are not retried -- exactly one outcome line.
     assert len(outcome_lines) == 1
@@ -285,3 +288,96 @@ def test_short_message_collapses_multiline_bodies() -> None:
     assert "boom" in collapsed
     assert _short_message("x" * 500).endswith("...")
     assert len(_short_message("x" * 500)) == 200
+
+
+# -- extract_provider_error_message ------------------------------------------
+
+# The exact shape from a real incident log: LiteLLM relaying Gemini's 403
+# PERMISSION_DENIED, with the provider's own JSON embedded INSIDE
+# error.message as an escaped string.
+_GEMINI_403_VIA_LITELLM = (
+    '{"error":{"message":"litellm.BadRequestError: GeminiException BadRequestError - {'
+    '\\n \\"error\\": {\\n \\"code\\": 403,\\n \\"message\\": \\"Your project has been '
+    'denied access. Please contact support.\\",\\n \\"status\\": \\"PERMISSION_DENIED\\"'
+    '\\n }\\n}"}}'
+)
+
+
+def test_extract_unwraps_litellm_wrapper_to_provider_message() -> None:
+    assert (
+        extract_provider_error_message(_GEMINI_403_VIA_LITELLM)
+        == "Your project has been denied access. Please contact support."
+    )
+
+
+def test_extract_handles_simple_error_object() -> None:
+    body = '{"error":{"message":"model not found","code":404}}'
+    assert extract_provider_error_message(body) == "model not found"
+
+
+def test_extract_handles_bare_message_object() -> None:
+    assert extract_provider_error_message('{"message":"quota exceeded"}') == "quota exceeded"
+
+
+def test_extract_handles_embedded_json_in_non_json_text() -> None:
+    text = 'upstream said: {"error":{"message":"invalid key"}} (end)'
+    assert extract_provider_error_message(text) == "invalid key"
+
+
+def test_extract_keeps_non_json_text_as_is() -> None:
+    # A non-JSON failure body is still a perfectly readable message.
+    assert extract_provider_error_message("plain gateway timeout") == "plain gateway timeout"
+    assert extract_provider_error_message("") is None
+
+
+@pytest.mark.asyncio
+async def test_failure_message_is_friendly_not_raw_blob(
+    sample_config_path, account_env_vars, caplog
+) -> None:
+    """The exact 403 body from the incident log must surface the upstream
+    reason in outcome.message (shown in the UI fragment and the log line)
+    instead of the truncated nested-JSON wrapper. Full body at DEBUG."""
+    import logging
+
+    manager = ConfigManager(sample_config_path)
+    config = manager.load()
+    candidate = build_test_candidate(config, manager, "gemini", "work", "gemini-3.6-flash")
+
+    gateway_client = FakeGatewayClient(
+        [GatewayResponse(success=False, status_code=403, body=None, raw_text=_GEMINI_403_VIA_LITELLM)]
+    )
+    with caplog.at_level(logging.DEBUG, logger="ai_gateway.admin.testing"):
+        outcome = await run_test_candidate(gateway_client, candidate)
+
+    assert outcome.success is False
+    assert outcome.message == "Your project has been denied access. Please contact support."
+    # The full body stays available at DEBUG for post-mortems.
+    assert any(r.levelno == logging.DEBUG and "PERMISSION_DENIED" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_retry_line_leads_with_account_model_tag(
+    sample_config_path, account_env_vars, caplog
+) -> None:
+    """The retry announcement must lead with the [provider/account/model]
+    tag like the outcome lines, so a scan of the log reads identities at
+    column 0 consistently.
+    """
+    import logging
+
+    manager = ConfigManager(sample_config_path)
+    config = manager.load()
+    candidate = build_test_candidate(config, manager, "gemini", "personal", "gemini-2.5-flash")
+
+    gateway_client = FakeGatewayClient(
+        [
+            GatewayResponse(success=False, status_code=500, body=None, raw_text="server error"),
+            GatewayResponse(success=True, status_code=200, body={}, raw_text="{}"),
+        ]
+    )
+    with caplog.at_level(logging.INFO, logger="ai_gateway.admin.testing"):
+        await run_test_candidate_with_retry(gateway_client, candidate, retry_delay_seconds=0)
+
+    retry_lines = [r.getMessage() for r in caplog.records if "retrying once" in r.getMessage()]
+    assert retry_lines, "retry announcement was never logged"
+    assert retry_lines[0].startswith("[gemini/personal/gemini-2.5-flash] Test failed with TRANSIENT")

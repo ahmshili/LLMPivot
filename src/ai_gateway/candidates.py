@@ -184,9 +184,18 @@ class CandidateResolver:
                             )
                         )
             result[endpoint_name] = candidates
-            logger.info(
-                "Endpoint '%s' compiled to %d candidate(s).", endpoint_name, len(candidates)
-            )
+            # Zero candidates is almost always a misconfiguration (model
+            # typos, missing LiteLLM deployment, no accounts) -- say so in
+            # plain text so it reads even in colorless (piped) logs; the
+            # formatter colors the count red when colors are on.
+            if candidates:
+                logger.info("Endpoint '%s' compiled to %d candidate(s).", endpoint_name, len(candidates))
+            else:
+                logger.warning(
+                    "Endpoint '%s' compiled to 0 candidate(s) -- nothing will route here. "
+                    "Check its models/accounts against LiteLLM's /v1/models.",
+                    endpoint_name,
+                )
 
         self._report_resolution_issues(unresolved_literals, unmatched_wildcards, excluded_models)
         return result
