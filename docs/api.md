@@ -32,3 +32,9 @@ Re-reads the YAML config and recompiles candidates without a restart.
 Cooldown/disabled state for accounts that still exist afterward is
 preserved (it lives in `CooldownManager`, keyed by `provider:account`,
 independent of the candidate list).
+
+## GET /
+
+Redirects (302) to `/admin/` when the admin UI is reachable. In prod mode without `--enable-admin`
+the admin is hidden, so it returns a small JSON pointer to `/docs` and `/health` instead. `HEAD /` is
+handled too, so PaaS health probes get a clean response.

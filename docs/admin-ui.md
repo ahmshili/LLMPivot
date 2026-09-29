@@ -5,6 +5,7 @@ Part of the [LLMPivot](../README.md) documentation.
 ## Table of contents
 
 - [Overview](#overview)
+- [Read-only demo mode](#read-only-demo-mode)
 - [Providers](#providers)
 - [Accounts](#accounts)
 - [Test / Test all accounts](#test--test-all-accounts)
@@ -34,6 +35,13 @@ write.
 **This UI is unauthenticated by design**, matching this project's
 trusted-local-network assumption -- do not expose it beyond localhost or
 a trusted network.
+
+## Read-only demo mode
+
+When demo mode is on (`DEMO_MODE=true`, or `litellm.demo_mode: true` in `config.yaml`) the admin UI
+becomes read-only. Pages load normally and a banner says so. Every write is rejected with a `403`.
+The exception is the per-account **Test** and **Test all** buttons, which only hit the mock backend
+and write nothing. See [`live-demo.md`](live-demo.md).
 
 ## Providers
 

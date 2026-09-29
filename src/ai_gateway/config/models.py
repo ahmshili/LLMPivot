@@ -14,7 +14,7 @@ resolving environment variables, and reaching out to LiteLLM all happen in
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ModelEntry(BaseModel):
@@ -356,6 +356,15 @@ class GatewayConfig(BaseModel):
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     providers: dict[str, ProviderConfig] = Field(default_factory=dict)
     endpoints: dict[str, EndpointConfig] = Field(default_factory=dict)
+
+    @field_validator("litellm", "routing", "cooldown", "admin", "security", mode="before")
+    @classmethod
+    def _empty_section_means_defaults(cls, value):
+        """A section header whose every child is commented out (as in
+        config.example.yaml's `security:` block) parses as YAML null.
+        Treat that as "all defaults" instead of failing validation.
+        """
+        return {} if value is None else value
 
     @model_validator(mode="after")
     def _validate_references(self) -> "GatewayConfig":

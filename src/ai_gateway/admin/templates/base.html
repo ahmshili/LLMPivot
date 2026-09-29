@@ -91,6 +91,7 @@
   .bulk-reorder-bar .icon-btn { padding: 0.25rem 0.45rem; }
   .bulk-reorder-bar .bulk-clear { margin-left: auto; border: none; background: none; opacity: 0.6; }
   .bulk-reorder-bar .bulk-clear:hover { opacity: 1; background: none; }
+  .demo-banner { background: #4a90e218; border: 1px solid #4a90e255; border-radius: 6px; padding: 0.5rem 0.9rem; margin: 0 0 1rem; font-size: 0.9rem; }
   footer.app-footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #8884; font-size: 0.82rem; color: #888; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; }
   footer.app-footer a { color: inherit; text-decoration: underline; }
   footer.app-footer .sep { opacity: 0.5; }
@@ -103,6 +104,7 @@
   <a href="/admin/endpoints">Endpoints</a>
   <a href="/admin/export">Export</a>
 </nav>
+{% if demo_mode %}<div class="demo-banner"><strong>Read-only public demo.</strong> Browse freely &mdash; edits are disabled, and the Test buttons return mock responses only.</div>{% endif %}
 {% if success %}<p style="color:#0a0;">{{ success }}</p>{% endif %}
 
 <script>

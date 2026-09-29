@@ -100,6 +100,10 @@ class GatewayClient:
             return True
         return os.environ.get("DEMO_MODE", "").lower() == "true"
 
+    def is_demo_mode(self) -> bool:
+        """Public accessor, used at startup to switch the admin UI to read-only."""
+        return self._is_demo_mode()
+
     def _get_demo_models(self) -> list[str]:
         """Return a predefined list of demo models."""
         return [

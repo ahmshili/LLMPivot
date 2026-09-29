@@ -20,6 +20,8 @@ notice must be preserved. Contact: a.shili.pers@gmail.com
 
 from __future__ import annotations
 
+import re
+
 from fastapi import Header, HTTPException, Request
 
 
@@ -94,3 +96,45 @@ async def require_admin_auth(request: Request, authorization: str | None = Heade
     provided = _extract_bearer_token(authorization)
     if not token or not provided or not _constant_time_eq(provided, token):
         raise _unauthorized("Invalid or missing admin token.")
+
+
+# --------------------------------------------------------------------------
+# Public read-only demo guard
+# --------------------------------------------------------------------------
+
+DEMO_READ_ONLY_MESSAGE = (
+    "This is a read-only public demo: changes are disabled. "
+    "Browse freely, and use the Test buttons -- they only return mock responses."
+)
+
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+# The only mutating-looking admin routes a demo visitor may still use: the
+# per-account "Test" and "Test all" buttons. In demo mode they hit the mock
+# LiteLLM backend and write nothing. Matched as a whole path (not a suffix)
+# so a provider or account that happens to be *named* "test" can't slip a
+# real write through.
+_DEMO_ALLOWED_POSTS = re.compile(
+    r"^/admin/providers/[^/]+/accounts/(?:[^/]+/test|test-all)/?$"
+)
+
+
+class DemoReadOnlyError(Exception):
+    """Raised for a write attempt against the admin UI while demo mode is on."""
+
+
+async def enforce_demo_read_only(request: Request) -> None:
+    """Applied to every /admin/* route. No-op unless demo mode is on
+    (app.state.demo_mode, set once at startup from DEMO_MODE or
+    litellm.demo_mode).
+
+    In demo mode every non-safe request is rejected, except the mock-only
+    Test buttons. main.py turns DemoReadOnlyError into a friendly 403.
+    """
+    if not getattr(request.app.state, "demo_mode", False):
+        return
+    if request.method in _SAFE_METHODS:
+        return
+    if request.method == "POST" and _DEMO_ALLOWED_POSTS.fullmatch(request.url.path):
+        return
+    raise DemoReadOnlyError()

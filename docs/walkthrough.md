@@ -36,8 +36,6 @@ Once startup finishes, the admin UI is reachable at:
 http://127.0.0.1:8000/admin/
 ```
 
-![Admin dashboard](../images/2026-09-23-06-29-24.png)
-
 **Provider list**
 ![Provider list](../images/2026-09-23-06-12-54.png)
 

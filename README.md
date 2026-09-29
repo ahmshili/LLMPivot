@@ -11,6 +11,11 @@
 </p>
 
 <p align="center">
+  <strong><a href="https://llmpivot.onrender.com">Live demo</a></strong> — a public, read-only instance of the admin dashboard.
+  <br><sub>It runs on a free Render tier, so the first visit after a quiet period can take about a minute to wake up.</sub>
+</p>
+
+<p align="center">
   <a href="https://github.com/ahmshili/LLMPivot/actions/workflows/tests.yml"><img src="https://github.com/ahmshili/LLMPivot/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Portfolio%20View%20Only-lightgrey.svg" alt="License: Portfolio View Only"></a>
   <img src="https://img.shields.io/badge/python-3.13%2B-blue" alt="Python 3.13+">
@@ -72,6 +77,7 @@ with a web dashboard to manage everything.
 - [What it does](#what-it-does)
 - [Architecture](#architecture)
 - [Tech stack](#tech-stack)
+- [Live demo](#live-demo)
 - [Quickstart (evaluation only — see License)](#quickstart-evaluation-only--see-license)
 - [A look at the admin dashboard](#a-look-at-the-admin-dashboard)
 - [Documentation](#documentation)
@@ -131,6 +137,17 @@ routing order, failure handling, and retries.
 Python · FastAPI · Pydantic (schema-validated YAML config) · Jinja2 +
 HTMX (server-rendered admin UI) · pytest (190+ tests, ~4,000 lines of
 application code).
+
+## Live demo
+
+**[Open the live demo](https://llmpivot.onrender.com)** — the root URL opens the admin dashboard. It is read-only
+and runs in demo mode (no real API keys, mock responses), so you can click around freely:
+browse providers, accounts, models and virtual endpoints, or press **Test** to see a mock
+response. Edits are disabled.
+
+- The instance sleeps when idle. If the page hangs on the first visit, give it a minute.
+- API check: `curl https://llmpivot.onrender.com/health` or `curl https://llmpivot.onrender.com/v1/models`.
+- How it is deployed and why it is safe to leave public: [`docs/live-demo.md`](docs/live-demo.md).
 
 ## Quickstart (evaluation only — see License)
 
@@ -200,6 +217,7 @@ endpoint — is in [`docs/walkthrough.md`](docs/walkthrough.md).
 - [`docs/admin-ui.md`](docs/admin-ui.md) — every admin UI feature in detail
 - [`docs/api.md`](docs/api.md) — API endpoint reference
 - [`docs/docker.md`](docs/docker.md) — running LiteLLM and PivotLLM with Docker, including the two-container Compose setup
+- [`docs/live-demo.md`](docs/live-demo.md) — the public read-only demo: what it allows, cold starts, deployment
 - [`docs/design-notes.md`](docs/design-notes.md) — engineering decision log: why things were built this way, bugs found along the way, and tradeoffs made deliberately
 
 ## Development

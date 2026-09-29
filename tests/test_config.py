@@ -60,3 +60,15 @@ def test_explicit_api_key_env_override() -> None:
 def test_extra_fields_forbidden() -> None:
     with pytest.raises(Exception):
         GatewayConfig.model_validate({"providers": {}, "endpoints": {}, "unexpected_field": 1})
+
+
+def test_section_header_with_only_comments_uses_defaults(tmp_path) -> None:
+    """config.example.yaml ships `security:` with every child commented out,
+    which YAML parses as null. Copying it verbatim must still load."""
+    from ai_gateway.config.manager import ConfigManager
+
+    path = tmp_path / "config.yaml"
+    path.write_text("security:\n  # api_auth_token_env: X\ncooldown:\nproviders: {}\nendpoints: {}\n", encoding="utf-8")
+    config = ConfigManager(path).load()
+    assert config.security.api_auth_token_env is None
+    assert config.cooldown.base_seconds > 0

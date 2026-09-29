@@ -81,7 +81,8 @@ def render(request: Request, name: str, context: dict | None = None, status_code
     """Wraps Jinja2Templates.TemplateResponse for the Starlette signature
     that takes `request` as an explicit first argument.
     """
-    return templates.TemplateResponse(request, name, context or {}, status_code=status_code)
+    ctx = {"demo_mode": getattr(request.app.state, "demo_mode", False), **(context or {})}
+    return templates.TemplateResponse(request, name, ctx, status_code=status_code)
 
 
 # --------------------------------------------------------------------------

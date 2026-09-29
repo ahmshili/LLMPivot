@@ -9,4 +9,5 @@ Part of the [LLMPivot](../README.md) documentation.
 - [`admin-ui.md`](admin-ui.md) — every admin UI feature in detail
 - [`api.md`](api.md) — API endpoint reference
 - [`docker.md`](docker.md) — running LiteLLM and LLMPivot with Docker, including the two-container Compose setup
+- [`live-demo.md`](live-demo.md) — the public read-only Render demo: what it allows, cold starts, how it is deployed
 - [`design-notes.md`](design-notes.md) — engineering decision log: why things were built this way, and tradeoffs made deliberately

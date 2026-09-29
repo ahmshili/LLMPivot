@@ -32,6 +32,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from ai_gateway.admin.config_writer import ConfigWriter
 from ai_gateway.admin.routes import router as admin_router
@@ -41,6 +42,7 @@ from ai_gateway.config.manager import ConfigManager
 from ai_gateway.cooldown import CooldownManager
 from ai_gateway.failure import FailureClassifier
 from ai_gateway.gateway_client import GatewayClient
+from ai_gateway.landing import router as landing_router
 from ai_gateway.logging_config import configure_logging
 from ai_gateway.notice import (
     AUTHOR_EMAIL,
@@ -52,7 +54,12 @@ from ai_gateway.notice import (
     PROJECT_NAME,
 )
 from ai_gateway.router import Router
-from ai_gateway.security import require_admin_auth
+from ai_gateway.security import (
+    DEMO_READ_ONLY_MESSAGE,
+    DemoReadOnlyError,
+    enforce_demo_read_only,
+    require_admin_auth,
+)
 
 logger = logging.getLogger("ai_gateway.main")
 
@@ -207,6 +214,13 @@ async def lifespan(app: FastAPI):
     app.state.admin_enabled = admin_enabled
     app.state.api_auth_token = api_auth_token
     app.state.admin_auth_token = admin_auth_token
+    # Demo mode makes the admin UI read-only (see security.enforce_demo_read_only).
+    # admin_available drives the "/" redirect: in prod mode the admin 404s
+    # unless --enable-admin was passed.
+    app.state.demo_mode = gateway_client.is_demo_mode()
+    app.state.admin_available = (not prod_mode) or admin_enabled
+    if app.state.demo_mode:
+        logger.info("Demo mode is on: the admin UI is read-only (Test buttons still work, mock only).")
 
     logger.info("LLMPivot started with %d endpoint(s).", len(candidates_by_endpoint))
     try:
@@ -253,5 +267,24 @@ async def _attribution_header(request: Request, call_next):
 # for PaaS health checks even when prod mode is on, so a single uniform
 # router-wide dependency would be wrong here, unlike admin_router below
 # where every route should be uniformly gated.
+@app.exception_handler(DemoReadOnlyError)
+async def _demo_read_only_handler(request: Request, exc: DemoReadOnlyError):
+    """Friendly 403 for writes attempted against the read-only demo."""
+    if "text/html" in request.headers.get("accept", ""):
+        return HTMLResponse(
+            "<!DOCTYPE html><meta charset=\"utf-8\"><title>Read-only demo</title>"
+            "<body style=\"font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem\">"
+            f"<h1>Read-only demo</h1><p>{DEMO_READ_ONLY_MESSAGE}</p>"
+            "<p><a href=\"javascript:history.back()\">&larr; Go back</a> &middot; "
+            "<a href=\"/admin/\">Dashboard</a></p></body>",
+            status_code=403,
+        )
+    return JSONResponse({"detail": DEMO_READ_ONLY_MESSAGE, "error": DEMO_READ_ONLY_MESSAGE}, status_code=403)
+
+
+app.include_router(landing_router)
 app.include_router(api_router)
-app.include_router(admin_router, dependencies=[Depends(require_admin_auth)])
+app.include_router(
+    admin_router,
+    dependencies=[Depends(require_admin_auth), Depends(enforce_demo_read_only)],
+)
